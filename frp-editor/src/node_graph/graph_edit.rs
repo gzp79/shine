@@ -180,12 +180,6 @@ impl GraphEdit {
                 ui.label(format!("action: {:?}", editor_state.last_action));
                 ui.label(format!("clip: {:?}", zoom_pan.screen_rect));
                 ui.label(format!("start_location: {:?}", context_menu.start_location));
-                let ap = zoom_pan.pos2_screen_to_area(ui.input().pointer.hover_pos().unwrap_or_default());
-                ui.label(format!(
-                    "pos : {:?}",
-                    ui.input().pointer.hover_pos().unwrap_or_default()
-                ));
-                ui.label(format!("area pos: {:?}", ap));
             });
 
         editor_state.store(ui, self.id);

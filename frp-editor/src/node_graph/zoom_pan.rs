@@ -42,10 +42,12 @@ impl ZoomPanState {
     }*/
 
     pub fn pos2_area_to_screen(&self, p: Pos2) -> Pos2 {
-        let Pos2 { x, y } = p + self.pan;
+        let Pos2 { x, y } = p;
         let x = x + self.screen_rect.left();
         let y = y + self.screen_rect.top();
-        pos2(x * self.zoom, y * self.zoom)
+        let x = (x + self.pan.x) * self.zoom;
+        let y = (y + self.pan.y) * self.zoom;
+        pos2(x, y)
     }
 
     pub fn vec2_screen_to_area(&self, v: Vec2) -> Vec2 {
@@ -54,9 +56,11 @@ impl ZoomPanState {
 
     pub fn pos2_screen_to_area(&self, p: Pos2) -> Pos2 {
         let Pos2 { x, y } = p;
+        let x = x / self.zoom - self.pan.x;
+        let y = y / self.zoom - self.pan.y;
         let x = x - self.screen_rect.left();
         let y = y - self.screen_rect.top();
-        pos2(x / self.zoom, y / self.zoom) - self.pan
+        pos2(x, y)
     }
 
     pub fn drag(&mut self, delta: Vec2) {
@@ -68,15 +72,19 @@ impl ZoomPanState {
         let new_zoom = (self.zoom * zoom).clamp(0.1, 10.);
 
         // keep the screen_pos remain at the same location
-        // solved for the equations: s2a_pre_zoom(screen_pos) = s2a_post_zoom(screen_pos)
-        let Pos2 { x, y } = screen_pos;
-        let zoom_center = pos2(x / self.zoom, y / self.zoom) - self.pan;
-        let dz = self.zoom / new_zoom;
+        // solved for the equations: a2s_pos_zoom(s2a_pre_zoom(screen_pos)) = screen_pos
 
+        let test = self.pos2_screen_to_area(screen_pos);
+
+        let Pos2 { x, y } = screen_pos;
         let new_pan = vec2(
-            (zoom_center.x + self.pan.x) * dz - zoom_center.x,
-            (zoom_center.y + self.pan.y) * dz - zoom_center.y,
+            x / new_zoom - x / self.zoom + self.pan.x,
+            y / new_zoom - y / self.zoom + self.pan.y,
         );
+
+        let err = self.pos2_area_to_screen(test) - screen_pos;
+        assert!(err.x < 1.);
+        assert!(err.y < 1.);
         self.update(new_pan, new_zoom);
     }
 

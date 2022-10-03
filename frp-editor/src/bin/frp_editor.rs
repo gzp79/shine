@@ -1,7 +1,10 @@
 use egui::{output::OutputEvent, CentralPanel, Color32, ComboBox, SidePanel};
 use egui_extras::{Size, StripBuilder};
 use shine_core::atomic_refcell::AtomicRefCell;
-use shine_frp_editor::{node_graph::{ContextMenuItem, Graph, GraphEdit, Input, Node, Output, PortType}, utils::AutoId};
+use shine_frp_editor::{
+    node_graph::{ContextMenuItem, Graph, GraphEdit, Input, Node, Output, PortType},
+    utils::AutoId,
+};
 use std::{collections::VecDeque, sync::Arc};
 
 #[derive(Clone, Debug, PartialEq, Eq)]

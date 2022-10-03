@@ -1,0 +1,15 @@
+{
+    "recommendations": [
+        "humao.rest-client",
+        "rust-lang.rust-analyzer",      
+        "Swellaby.vscode-rust-test-adapter",
+        "serayuzgur.crates",
+
+        "PhilHindle.errorlens",
+        "shd101wyy.markdown-preview-enhanced",        
+
+        "adamvoss.vscode-languagetool",
+        "adamvoss.vscode-languagetool-en",
+        "ban.spellright",
+    ]
+}

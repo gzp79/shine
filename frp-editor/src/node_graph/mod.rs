@@ -5,7 +5,7 @@ pub use self::port_type::*;
 mod port;
 pub use self::port::*;
 mod port_visual;
-pub use self::port_visual::*;
+use self::port_visual::*;
 mod connection;
 pub use self::connection::*;
 mod primitive_node;

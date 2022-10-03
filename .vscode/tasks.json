@@ -1,0 +1,173 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558 
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "fmt",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "fmt"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "clippy",
+            "type": "shell",
+            "command": "cargo clippy -p shine-${input:projects} --all-targets ${input:features}",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "udeps",
+            "type": "shell",
+            "command": "cargo udeps -p shine-${input:projects} ${input:features}",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "outdated",
+            "type": "shell",
+            "command": "cargo outdated -R -p shine-${input:projects} ${input:features}",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "cargo build -p shine-${input:projects} --all-targets ${input:features}",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build"
+        },      
+        {
+            "label": "test ",
+            "type": "shell",
+            "command": "cargo test -p shine-${input:projects} ${input:features}",
+            "options": {
+                "env": {
+                    "_RUST_LOG": "debug",
+                    "RUST_BACKTRACE": "full"
+                },
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "run frp editor (native)",
+            "type": "shell",
+            "command": "cargo run -p shine-frp-editor --bin frp_editor",
+            "options": {
+                "env": {
+                    "RUST_LOG": "trace",
+                    "RUST_BACKTRACE": "full"
+                },
+            },            
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "pickString",
+            "id": "projects",
+            "description": "Select project",
+            "options": [
+                "frp-editor",
+                "core",
+                "test",
+                "test-macro",
+            ],
+            "default": "asset-service"
+        },
+        {
+            "type": "pickString",
+            "id": "features",
+            "description": "Select feature",
+            "options": [
+                {
+                    "label": "debug full",
+                    "value": ""
+                },
+                {
+                    "label": "release full",
+                    "value": "--release"
+                },
+                {
+                    "label": "native",
+                    "value": "--no-default-features --features=native_default"
+                },
+                {
+                    "label": "release native",
+                    "value": "--release  --no-default-features --features=native_default"
+                },
+                {
+                    "label": "web",
+                    "value": "--target wasm32-unknown-unknown --no-default-features --features=web_default"
+                },
+                {
+                    "label": "release web",
+                    "value": "--target wasm32-unknown-unknown --release --no-default-features --features=web_default"
+                }
+            ],
+            "default": "debug"
+        }
+    ]
+}

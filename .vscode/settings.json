@@ -1,0 +1,21 @@
+{
+    "terminal.integrated.env.windows": {
+        "_RUST_BACKTRACE": "full",
+        "RUST_LOG": "info",
+
+        "_NO_HEADLESS": "1"
+    },
+
+    "spellright.ignoreFiles": [
+        "**/.gitignore",
+        "**/.spellignore",
+        "**/*.toml"
+    ],
+    "spellright.language": [
+        "en"
+    ],
+    "spellright.documentTypes": [
+        "markdown",
+        "latex"
+    ]
+}

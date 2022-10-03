@@ -1,0 +1,22 @@
+[package]
+name = "shine-frp-editor"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["native_default"]
+native_default = []
+web_default = []
+
+[dependencies]
+log = "0.4"
+env_logger = "0.9"
+thiserror = "1.0"
+slotmap = "1.0"
+
+egui = "0.19"
+egui_extras = { version = "0.19", features = ["serde"] }
+eframe = "0.19"
+
+shine-core = { path = "../core", version = "0.1.0" }
+

@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "test-macro",
+    "test",
+    "core",
+    "frp-editor",
+]

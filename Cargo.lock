@@ -1651,6 +1651,7 @@ dependencies = [
  "atomic_refcell",
  "crossbeam",
  "data-encoding",
+ "downcast-rs",
  "futures",
  "getrandom",
  "gloo-timers",

@@ -1,4 +1,5 @@
 #![feature(entry_insert)]
+#![feature(box_into_inner)]
 
 mod base64url;
 pub use self::base64url::*;
@@ -15,6 +16,7 @@ pub mod graph;
 
 pub use atomic_refcell;
 pub use crossbeam;
+pub use downcast_rs;
 
 /// Helper to extend lifetime of a refernece. Genrates highly unsafe code.
 #[macro_export]

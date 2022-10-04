@@ -43,8 +43,8 @@ where
 }
 
 /// Helper to report err and panic.
-pub trait UnwrapReport<O> {
-    fn unwrap_report(self) -> O
+pub trait UnwrapReport<T> {
+    fn unwrap_report(self) -> T
     where
         Self: Sized;
 }
@@ -71,6 +71,24 @@ impl<T> UnwrapReport<T> for Option<T> {
             Some(ok) => ok,
             None => {
                 panic!("Called `unwrap_report` on a None value");
+            }
+        }
+    }
+}
+
+/// Helper to unwrap Result that does not implement Debug
+pub trait UnwrapNoDebug<T> {
+    fn unwrap_no_debug(self) -> T
+    where
+        Self: Sized;
+}
+
+impl<T, E> UnwrapNoDebug<T> for Result<T, E> {
+    fn unwrap_no_debug(self) -> T {
+        match self {
+            Ok(ok) => ok,
+            Err(_) => {
+                panic!("Called `unwrap_no_debug` on an `Err` value");
             }
         }
     }

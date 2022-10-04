@@ -50,7 +50,7 @@ impl<Store: SmallAnyBoxLayout> Drop for SmallAnyBox<Store> {
 }
 
 impl<Store: SmallAnyBoxLayout> SmallAnyBox<Store> {
-    pub fn new<T: Downcast + std::fmt::Debug>(node: T) -> Self {
+    pub fn new<T: Downcast>(node: T) -> Self {
         let size = mem::size_of::<T>();
         assert!(size > 0);
         let align = mem::align_of::<T>();

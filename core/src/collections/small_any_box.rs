@@ -94,20 +94,28 @@ impl<Store: SmallAnyBoxLayout> SmallAnyBox<Store> {
         matches!(&self.0, Inner::Big(..))
     }
 
-    pub fn as_ref<T: Downcast>(&self) -> Option<&T> {
+    pub fn as_any(&self) -> &dyn Any {
         match &self.0 {
             Inner::Removed => unreachable!(),
-            Inner::Small(space, _, as_ref, _, _) => as_ref(space).downcast_ref::<T>(),
-            Inner::Big(bx) => bx.downcast_ref::<T>(),
+            Inner::Small(space, _, as_ref, _, _) => as_ref(space),
+            Inner::Big(bx) => bx,
         }
     }
 
-    pub fn as_mut<T: Downcast>(&mut self) -> Option<&mut T> {
+    pub fn as_mut_any(&mut self) -> &mut dyn Any {
         match &mut self.0 {
             Inner::Removed => unreachable!(),
-            Inner::Small(space, _, _, as_mut, _) => as_mut(space).downcast_mut::<T>(),
-            Inner::Big(bx) => bx.downcast_mut::<T>(),
+            Inner::Small(space, _, _, as_mut, _) => as_mut(space),
+            Inner::Big(bx) => bx,
         }
+    }
+
+    pub fn as_ref<T: Downcast>(&self) -> Option<&T> {
+        self.as_any().downcast_ref::<T>()
+    }
+
+    pub fn as_mut<T: Downcast>(&mut self) -> Option<&mut T> {
+        self.as_mut_any().downcast_mut::<T>()
     }
 
     pub fn take_as<T: Sized + Downcast>(mut self) -> Result<T, Self> {

@@ -104,7 +104,7 @@ impl<Store: SmallAnyBoxLayout> SmallAnyBox<Store> {
         match &self.0 {
             Inner::Removed => unreachable!(),
             Inner::Small(space, _, as_ref, _, _) => as_ref(space),
-            Inner::Big(bx) => bx,
+            Inner::Big(bx) => &**bx,
         }
     }
 
@@ -112,7 +112,7 @@ impl<Store: SmallAnyBoxLayout> SmallAnyBox<Store> {
         match &mut self.0 {
             Inner::Removed => unreachable!(),
             Inner::Small(space, _, _, as_mut, _) => as_mut(space),
-            Inner::Big(bx) => bx,
+            Inner::Big(bx) => &mut **bx,
         }
     }
 

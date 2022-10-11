@@ -1,38 +1,87 @@
-use crate::node_graph::{GraphOperation, NodeBuilder, ZoomPanState};
+use crate::node_graph::{GraphOperation, ZoomPanState};
 use egui::{pos2, Id, Pos2, Ui};
-use std::sync::Arc;
+use slotmap::{new_key_type, SlotMap};
 
-pub enum ContextMenuResult {
-    BuildNode(Arc<dyn NodeBuilder>),
+new_key_type! { pub struct ContextMenuId; }
+
+pub struct ContextMenuItem {
+    pub name: String,
 }
 
-pub enum ContextMenuItem {
-    SubMenu {
-        group: String,
-        items: Vec<ContextMenuItem>,
-    },
-    AddNode {
-        name: String,
-        builder: Arc<dyn NodeBuilder>,
-    },
+impl From<&str> for ContextMenuItem {
+    fn from(name: &str) -> Self {
+        ContextMenuItem { name: name.into() }
+    }
 }
 
-impl ContextMenuItem {
-    pub fn sub_menu<S: ToString>(group: S, items: Vec<ContextMenuItem>) -> Self {
-        Self::SubMenu {
-            group: group.to_string(),
-            items,
+enum ContextMenuKind {
+    SubMenu { name: String, items: Vec<ContextMenuKind> },
+    LeafItem(ContextMenuId),
+}
+
+pub struct ContextMenu {
+    items: SlotMap<ContextMenuId, ContextMenuItem>,
+    root: ContextMenuKind,
+}
+
+impl Default for ContextMenu {
+    fn default() -> Self {
+        Self {
+            items: SlotMap::default(),
+            root: ContextMenuKind::SubMenu {
+                name: "root".into(),
+                items: Vec::new(),
+            },
+        }
+    }
+}
+
+impl ContextMenu {
+    pub fn builder(&mut self) -> ConextSubMenuBuilder<'_> {
+        ConextSubMenuBuilder {
+            menu_items: &mut self.items,
+            corrent: &mut self.root,
+        }
+    }
+}
+
+pub struct ConextSubMenuBuilder<'m> {
+    menu_items: &'m mut SlotMap<ContextMenuId, ContextMenuItem>,
+    corrent: &'m mut ContextMenuKind,
+}
+
+impl<'m> ConextSubMenuBuilder<'m> {
+    pub fn add_item_with<I: Into<ContextMenuItem>, F: FnOnce(ContextMenuId)>(&mut self, item: I, with: F) -> &mut Self {
+        let id = self.menu_items.insert(item.into());
+        if let ContextMenuKind::SubMenu { items, .. } = &mut self.corrent {
+            items.push(ContextMenuKind::LeafItem(id));
+            (with)(id);
+            self
+        } else {
+            unreachable!()
         }
     }
 
-    pub fn add_node<S, F>(name: S, node_builder: F) -> Self
+    pub fn add_item<I: Into<ContextMenuItem>>(&mut self, item: I) -> &mut Self {
+        self.add_item_with(item, |_| {})
+    }
+
+    pub fn add_group<'n, S: ToString>(&'n mut self, name: S) -> ConextSubMenuBuilder<'n>
     where
-        F: NodeBuilder,
-        S: ToString,
+        'm: 'n,
     {
-        Self::AddNode {
-            name: name.to_string(),
-            builder: Arc::new(node_builder),
+        if let ContextMenuKind::SubMenu { items, .. } = &mut self.corrent {
+            items.push(ContextMenuKind::SubMenu {
+                name: name.to_string(),
+                items: Vec::new(),
+            });
+            let corrent = items.last_mut().unwrap();
+            ConextSubMenuBuilder {
+                menu_items: self.menu_items,
+                corrent,
+            }
+        } else {
+            unreachable!()
         }
     }
 }
@@ -61,35 +110,42 @@ impl ContextMenuState {
         ui.data().insert_temp(id, self);
     }
 
-    fn show_item(
+    fn show_recursive(
         &self,
-        item: &ContextMenuItem,
+        menu_items: &SlotMap<ContextMenuId, ContextMenuItem>,
+        current: &ContextMenuKind,
         ui: &mut Ui,
-        filters: Option<&[&str]>,
         operations: &mut Vec<GraphOperation>,
     ) {
-        match item {
-            ContextMenuItem::SubMenu { group, items } => {
-                if let Some(filters) = filters {
-                    for item in items {
-                        self.show_item(item, ui, Some(filters), operations);
+        match current {
+            ContextMenuKind::SubMenu { name, items } => {
+                ui.menu_button(name, |ui| {
+                    for sub_item in items {
+                        self.show_recursive(menu_items, sub_item, ui, operations);
                     }
-                } else {
-                    ui.menu_button(group, |ui| {
-                        for item in items {
-                            self.show_item(item, ui, None, operations);
-                        }
-                    });
-                }
+                });
             }
-            ContextMenuItem::AddNode { name, builder } => {
-                let visible = filters
-                    .map(|filter| filter.iter().any(|filter| name.starts_with(filter)))
-                    .unwrap_or(true);
-                if visible && ui.button(name).clicked() {
-                    operations.push(GraphOperation::AddNode(self.start_location, builder.clone()));
+            ContextMenuKind::LeafItem(menu_id) => {
+                let item = menu_items.get(*menu_id).unwrap();
+                if ui.button(&item.name).clicked() {
+                    operations.push(GraphOperation::ContextMenu(self.start_location, *menu_id));
                     ui.close_menu();
                 }
+            }
+        }
+    }
+
+    fn show_filtered(
+        &self,
+        menu_items: &SlotMap<ContextMenuId, ContextMenuItem>,
+        filter: &[&str],
+        ui: &mut Ui,
+        operations: &mut Vec<GraphOperation>,
+    ) {
+        for (id, item) in menu_items {
+            if filter.iter().any(|filter| item.name.starts_with(filter)) && ui.button(&item.name).clicked() {
+                operations.push(GraphOperation::ContextMenu(self.start_location, id));
+                ui.close_menu();
             }
         }
     }
@@ -98,7 +154,7 @@ impl ContextMenuState {
         &mut self,
         ui: &mut Ui,
         zoom_pan: &ZoomPanState,
-        content: &[ContextMenuItem],
+        content: &ContextMenu,
         operations: &mut Vec<GraphOperation>,
     ) {
         ui.horizontal(|ui| {
@@ -118,16 +174,24 @@ impl ContextMenuState {
             }
         }
 
+        //todo: store in state, thus no "heavy" calculation in each frame
         let filters = self
             .filter
             .split(' ')
             .map(|f| f.trim())
             .filter(|f| !f.is_empty())
             .collect::<Vec<&str>>();
-        let filters = if filters.is_empty() { None } else { Some(&filters[..]) };
 
-        for item in content {
-            self.show_item(item, ui, filters, operations);
+        if filters.is_empty() {
+            if let ContextMenuKind::SubMenu { items, .. } = &content.root {
+                for sub_item in items {
+                    self.show_recursive(&content.items, sub_item, ui, operations);
+                }
+            } else {
+                unreachable!()
+            }
+        } else {
+            self.show_filtered(&content.items, &filters, ui, operations);
         }
     }
 }

@@ -8,7 +8,7 @@ fn simple() {
     assert!(bx.is_small());
     assert_eq!(bx.as_ref::<u8>(), None);
     assert_eq!(bx.as_mut::<u8>(), None);
-    assert_eq!(bx.as_ref::<u16>(), Some(&13));    
+    assert_eq!(bx.as_ref::<u16>(), Some(&13));
     bx.as_mut::<u16>().map(|b| *b = 14);
     let bx = bx.take_as::<u8>().err().unwrap();
     assert_eq!(bx.take_as::<u16>().ok().unwrap(), 14);
@@ -59,9 +59,9 @@ fn drop() {
     let count = Rc::new(RefCell::new(0));
     {
         let bx = SmallAnyBox::<small_box_layout::S64_8>::new(TrackDrop(count.clone()));
-        assert!(bx.is_small());        
+        assert!(bx.is_small());
         let cnt = *count.borrow();
-        cnt      
+        cnt
     };
     assert_eq!(*count.borrow(), 1);
 

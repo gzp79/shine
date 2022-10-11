@@ -1,7 +1,7 @@
 {
     "terminal.integrated.env.windows": {
         "_RUST_BACKTRACE": "full",
-        "RUST_LOG": "info",
+        "RUST_LOG": "trace",
 
         "_NO_HEADLESS": "1"
     },

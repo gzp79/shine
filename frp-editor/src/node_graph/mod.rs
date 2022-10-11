@@ -8,8 +8,6 @@ mod port_visual;
 use self::port_visual::*;
 mod connection;
 pub use self::connection::*;
-mod primitive_node;
-pub use self::primitive_node::*;
 mod node;
 pub use self::node::*;
 mod graph;

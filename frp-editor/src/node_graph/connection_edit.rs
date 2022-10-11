@@ -1,10 +1,8 @@
 use crate::node_graph::{
     utils::draw_connection, EditorMode, Graph, GraphOperation, InputId, InputOutputId, OutputId, PortSelection,
-    ZoomPanState,
+    PortViewState, ZoomPanState,
 };
-use egui::{Id, Pos2, Response, Stroke, Ui};
-
-use super::PortViewState;
+use egui::{Id, Pos2, Stroke, Ui};
 
 /// Edit connection between ports
 #[derive(Default, Clone, Debug)]
@@ -74,18 +72,16 @@ impl ConnectionEditState {
         ui: &mut Ui,
         zoom_pan: &ZoomPanState,
         port_visual: &PortViewState,
-        dragged_node: Option<&Response>,
         graph: &Graph,
         validate: F,
-    ) -> (Option<EditorMode>, Option<GraphOperation>)
+    ) -> (EditorMode, Option<GraphOperation>)
     where
         F: FnOnce(InputId, OutputId) -> bool,
     {
-        let pointer_pos = ui.input().pointer.hover_pos().unwrap_or(Pos2::ZERO);
+        let pointer_pos = ui.ctx().pointer_latest_pos().unwrap_or(Pos2::ZERO);
         let pointer_down = ui.input().pointer.any_down();
-        let drag_start = dragged_node.map(|r| r.drag_started()).unwrap_or(false);
 
-        if self.start.is_none() && port_visual.has_hovered() && drag_start {
+        if self.start.is_none() {
             // start a new connection
             let port = port_visual.get_hovered().unwrap();
             let pos = port_visual.get_hovered_pos().unwrap();
@@ -95,8 +91,8 @@ impl ConnectionEditState {
             self.end_pos = None;
             self.valid = false;
 
-            (Some(EditorMode::EditConnection), None)
-        } else if self.start.is_some() {
+            (EditorMode::EditConnection, None)
+        } else {
             // update a pending connection
             self.start_pos = port_visual.get_screen_pos(self.start.unwrap());
 
@@ -142,12 +138,10 @@ impl ConnectionEditState {
                 };
 
                 self.cancel();
-                (Some(EditorMode::None), operation)
+                (EditorMode::None, operation)
             } else {
-                (Some(EditorMode::EditConnection), None)
+                (EditorMode::EditConnection, None)
             }
-        } else {
-            (None, None)
         }
     }
 

@@ -1,7 +1,10 @@
-use egui::{CentralPanel, Color32, ComboBox, SidePanel};
+use egui::{CentralPanel, Color32, ComboBox, Pos2, SidePanel};
 use egui_extras::{Size, StripBuilder};
 use shine_core::atomic_refcell::AtomicRefCell;
-use shine_frp_editor::node_graph::{ContextMenuItem, Graph, GraphEdit, Input, Node, Output, PortType};
+use shine_frp_editor::node_graph::{
+    Connection, ContextMenu, ContextMenuId, Graph, GraphEdit, GraphOperation, Input, Node, NodeId, Output, PortType,
+};
+use slotmap::SecondaryMap;
 use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -13,7 +16,8 @@ enum SideTool {
 struct MyApp {
     tool: SideTool,
     graph: Arc<AtomicRefCell<Graph>>,
-    context_menu: Arc<Vec<ContextMenuItem>>,
+    context_menu: Arc<ContextMenu>,
+    context_menu_action: SecondaryMap<ContextMenuId, Box<dyn Fn(NodeId, Pos2) -> Node>>,
 }
 
 impl Default for MyApp {
@@ -23,47 +27,73 @@ impl Default for MyApp {
         let type_u16 = graph.add_type(PortType::new("u16"));
         let type_u32 = graph.add_type(PortType::new("u32"));
 
-        let context_menu = vec![
-            ContextMenuItem::sub_menu(
-                "constants",
-                vec![
-                    ContextMenuItem::add_node("u8", move |node_id, pos| {
-                        Node::primitive(node_id, "u8", pos, vec![], vec![Output::label("value", type_u8)])
-                    }),
-                    ContextMenuItem::add_node("u16", move |node_id, pos| {
-                        Node::primitive(node_id, "u16", pos, vec![], vec![Output::label("value", type_u16)])
-                    }),
-                    ContextMenuItem::add_node("u32", move |node_id, pos| {
-                        Node::primitive(node_id, "u32", pos, vec![], vec![Output::label("value", type_u32)])
-                    }),
-                ],
-            ),
-            ContextMenuItem::sub_menu(
-                "logic",
-                vec![ContextMenuItem::add_node("something", move |node_id, pos| {
-                    Node::primitive(
-                        node_id,
-                        "zip",
-                        pos,
-                        vec![
-                            Input::label("in1", type_u8),
-                            Input::label("in2", type_u16),
-                            Input::label("in3", type_u32),
-                            Input::label("in4", type_u32),
-                        ],
-                        vec![Output::label("zipped", type_u8)],
-                    )
-                })],
-            ),
-        ];
+        let (context_menu, context_menu_action) = {
+            let mut context_menu = ContextMenu::default();
+            let mut context_menu_action = SecondaryMap::<_, Box<dyn Fn(NodeId, Pos2) -> Node>>::default();
+            let mut builder = context_menu.builder();
+            {
+                let mut constants = builder.add_group("constants");
+                constants
+                    .add_item_with("u8", |menu_id| {
+                        context_menu_action.insert(
+                            menu_id,
+                            Box::new(move |node_id, pos| {
+                                Node::new(node_id, "u8", pos, vec![], vec![Output::label("value", type_u8)])
+                            }),
+                        );
+                    })
+                    .add_item_with("u8", |menu_id| {
+                        context_menu_action.insert(
+                            menu_id,
+                            Box::new(move |node_id, pos| {
+                                Node::new(node_id, "u16", pos, vec![], vec![Output::label("value", type_u16)])
+                            }),
+                        );
+                    })
+                    .add_item_with("u8", |menu_id| {
+                        context_menu_action.insert(
+                            menu_id,
+                            Box::new(move |node_id, pos| {
+                                Node::new(node_id, "u32", pos, vec![], vec![Output::label("value", type_u32)])
+                            }),
+                        );
+                    });
+            }
+
+            {
+                let mut logic = builder.add_group("logic");
+
+                logic.add_item_with("zip", |menu_id| {
+                    context_menu_action.insert(
+                        menu_id,
+                        Box::new(move |node_id, pos| {
+                            Node::new(
+                                node_id,
+                                "zip",
+                                pos,
+                                vec![
+                                    Input::label("in1", type_u8),
+                                    Input::label("in2", type_u16),
+                                    Input::label("in3", type_u32),
+                                    Input::label("in4", type_u32),
+                                ],
+                                vec![Output::label("zipped", type_u8)],
+                            )
+                        }),
+                    );
+                });
+            }
+
+            (Arc::new(context_menu), context_menu_action)
+        };
 
         let graph = Arc::new(AtomicRefCell::new(graph));
-        let context_menu = Arc::new(context_menu);
 
         Self {
             tool: SideTool::Memory,
             graph,
             context_menu,
+            context_menu_action,
         }
     }
 }
@@ -84,6 +114,8 @@ impl eframe::App for MyApp {
             };
         });
 
+        let mut operations = Vec::new();
+
         CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
                 .size(Size::relative(0.5))
@@ -93,7 +125,9 @@ impl eframe::App for MyApp {
                     strip.cell(|ui| {
                         ui.painter()
                             .rect_filled(ui.available_rect_before_wrap(), 0.0, Color32::DARK_BLUE);
-                        GraphEdit::new("graph edit 1", self.graph.clone(), self.context_menu.clone()).show(ui);
+                        operations.append(
+                            &mut GraphEdit::new("graph edit 1", self.graph.clone(), self.context_menu.clone()).show(ui),
+                        );
                     });
                     strip.cell(|ui| {
                         ui.painter()
@@ -102,10 +136,31 @@ impl eframe::App for MyApp {
                     strip.cell(|ui| {
                         ui.painter()
                             .rect_filled(ui.available_rect_before_wrap(), 0.0, Color32::DARK_RED);
-                        GraphEdit::new("graph edit 2", self.graph.clone(), self.context_menu.clone()).show(ui);
+                        operations.append(
+                            &mut GraphEdit::new("graph edit 2", self.graph.clone(), self.context_menu.clone()).show(ui),
+                        );
                     });
                 });
         });
+
+        let graph = &mut *self.graph.borrow_mut();
+        for operation in operations {
+            match operation {
+                GraphOperation::ContextMenu(pos, menu_id) => {
+                    if let Some(builder) = self.context_menu_action.get(menu_id) {
+                        let _ = graph.add_node(|node_id| (builder)(node_id, pos));
+                    }
+                }
+                GraphOperation::Connect(input_id, output_id) => {
+                    let _ = graph.add_connection(|connection_id| Connection::new(connection_id, input_id, output_id));
+                }
+                GraphOperation::SetNodeLocation(node_id, pos) => {
+                    if let Some(node) = graph.node_mut(node_id) {
+                        node.set_location(pos);
+                    }
+                }
+            }
+        }
     }
 }
 

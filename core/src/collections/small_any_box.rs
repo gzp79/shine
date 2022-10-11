@@ -5,8 +5,8 @@ use std::{
     ptr,
 };
 
-pub trait SmallAnyBoxLayout { 
-    fn init() -> Self; 
+pub trait SmallAnyBoxLayout {
+    fn init() -> Self;
     fn as_ptr(&self) -> *const u8;
     fn as_mut_ptr(&mut self) -> *mut u8;
 }
@@ -20,8 +20,8 @@ macro_rules! define_layout {
             data: [u8; $size],
         }
 
-        impl $crate::collections::SmallAnyBoxLayout for $name { 
-            fn init() -> Self { Self{ data: [0; $size] } } 
+        impl $crate::collections::SmallAnyBoxLayout for $name {
+            fn init() -> Self { Self{ data: [0; $size] } }
             fn as_ptr(&self) -> *const u8 { self.data.as_ptr() }
             fn as_mut_ptr(&mut self) -> *mut u8 { self.data.as_mut_ptr() }
         }
@@ -30,7 +30,13 @@ macro_rules! define_layout {
 
 enum Inner<Store: SmallAnyBoxLayout> {
     Removed,
-    Small(Store, usize, fn(&Store) -> &dyn Any, fn(&mut Store) -> &mut dyn Any, fn(&mut Store)),
+    Small(
+        Store,
+        usize,
+        fn(&Store) -> &dyn Any,
+        fn(&mut Store) -> &mut dyn Any,
+        fn(&mut Store),
+    ),
     Big(Box<dyn Any>),
 }
 
@@ -43,7 +49,7 @@ pub struct SmallAnyBox<Store: SmallAnyBoxLayout>(Inner<Store>);
 
 impl<Store: SmallAnyBoxLayout> Drop for SmallAnyBox<Store> {
     fn drop(&mut self) {
-        if let Inner::Small(store, _, _, _, drop) = &mut self.0 {            
+        if let Inner::Small(store, _, _, _, drop) = &mut self.0 {
             drop(store);
         }
     }
@@ -58,28 +64,28 @@ impl<Store: SmallAnyBoxLayout> SmallAnyBox<Store> {
         if size > mem::size_of::<Store>() || align > mem::align_of::<Store>() {
             // Big Node
             Self(Inner::Big(Box::new(node)))
-        } else {            
+        } else {
             let mut space = Store::init();
             let ptr = space.as_mut_ptr();
             unsafe {
                 let src = &node as *const T;
-                ptr::copy_nonoverlapping(src as *const u8, ptr, size);                
+                ptr::copy_nonoverlapping(src as *const u8, ptr, size);
             };
             mem::forget(node);
-            
+
             let as_ref: fn(&Store) -> &dyn Any = |space| {
                 let ptr = space.as_ptr() as *const T;
-                unsafe { &*ptr}
+                unsafe { &*ptr }
             };
             let as_mut: fn(&mut Store) -> &mut dyn Any = |space| {
                 let ptr = space.as_mut_ptr() as *mut T;
-                unsafe { &mut *ptr}
+                unsafe { &mut *ptr }
             };
             let drop: fn(&mut Store) = |space| {
                 let ptr = space.as_mut_ptr() as *mut T;
                 unsafe { ptr::drop_in_place(ptr) };
             };
-            
+
             Self(Inner::Small(space, size, as_ref, as_mut, drop))
         }
     }

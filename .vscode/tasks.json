@@ -103,9 +103,9 @@
             "group": "build"
         },
         {
-            "label": "run frp editor (native)",
+            "label": "run graph editor (native)",
             "type": "shell",
-            "command": "cargo run -p shine-frp-editor --bin frp_editor",
+            "command": "cargo run -p shine-ui --bin graph_editor_example",
             "options": {
                 "env": {
                     "RUST_LOG": "trace",
@@ -130,7 +130,7 @@
             "id": "projects",
             "description": "Select project",
             "options": [
-                "frp-editor",
+                "ui",
                 "core",
                 "test",
                 "test-macro",

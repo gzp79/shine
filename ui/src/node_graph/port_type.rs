@@ -3,6 +3,7 @@ use slotmap::new_key_type;
 
 new_key_type! { pub struct PortTypeId; }
 
+#[derive(Clone, Debug)]
 pub struct PortType {
     pub name: String,
     pub port_size: f32,
@@ -20,6 +21,17 @@ impl PortType {
             connection_width: 3.,
             color: Color32::WHITE,
             hover_color: Color32::BLUE,
+            error_color: Color32::RED,
+        }
+    }
+
+    pub fn unknown() -> Self {
+        PortType {
+            name: "unknown".to_string(),
+            port_size: 7.,
+            connection_width: 3.,
+            color: Color32::RED,
+            hover_color: Color32::RED,
             error_color: Color32::RED,
         }
     }

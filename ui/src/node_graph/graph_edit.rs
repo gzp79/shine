@@ -2,8 +2,6 @@ use crate::node_graph::{
     ConnectionEditState, ContextMenu, ContextMenuState, Graph, GraphOperation, PortViewState, ZoomPanState,
 };
 use egui::{Id, Key, Sense, Ui};
-use shine_core::atomic_refcell::AtomicRefCell;
-use std::{hash::Hash, sync::Arc};
 
 /// Current editor mode
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
@@ -32,23 +30,21 @@ impl GraphEditState {
 }
 
 /// The graph editor widget
-pub struct GraphEdit {
+pub struct GraphEdit<'a> {
     id: Id,
-    graph: Arc<AtomicRefCell<Graph>>,
-    context_menu: Arc<ContextMenu>,
+    graph: &'a Graph,
+    context_menu: &'a ContextMenu,
 }
 
-impl GraphEdit {
-    pub fn new<I: Hash>(id: I, graph: Arc<AtomicRefCell<Graph>>, context_menu: Arc<ContextMenu>) -> Self {
+impl<'a> GraphEdit<'a> {
+    pub fn new<I: Into<Id>>(id: I, graph: &'a Graph, context_menu: &'a ContextMenu) -> Self {
         Self {
-            id: Id::new(id),
+            id: id.into(),
             graph,
             context_menu,
         }
     }
-}
 
-impl GraphEdit {
     fn show_graph(
         &mut self,
         ui: &mut Ui,
@@ -57,12 +53,10 @@ impl GraphEdit {
         port_visual: &mut PortViewState,
         operations: &mut Vec<GraphOperation>,
     ) {
-        let graph = &*self.graph.borrow();
-
         // render nodes
         let mut dragged_node = None;
-        for node in graph.nodes() {
-            let node_state = node.show(ui, zoom_pan, port_visual, graph, operations);
+        for node in self.graph.nodes.values() {
+            let node_state = node.show(ui, zoom_pan, port_visual, self.graph, operations);
             if node_state.dragged {
                 dragged_node = Some(node_state);
             }
@@ -82,8 +76,8 @@ impl GraphEdit {
         }
 
         //render connections
-        for connection in graph.connections() {
-            connection.show(ui, zoom_pan, port_visual, graph)
+        for connection in self.graph.connections.values() {
+            connection.show(ui, zoom_pan, port_visual, self.graph)
         }
     }
 
@@ -115,7 +109,7 @@ impl GraphEdit {
         // connection edit
         if matches!(editor_state.mode, EditorMode::EditConnection) {
             let (mode, operation) =
-                connection_edit.update(ui, &zoom_pan, &port_visual, &self.graph.borrow(), |_, _| true);
+                connection_edit.update(ui, &zoom_pan, &port_visual, self.graph, |_, _| true);
             if let Some(operation) = operation {
                 operations.push(operation);
             }
@@ -127,7 +121,7 @@ impl GraphEdit {
             editor_state.mode = EditorMode::None;
             response = response.context_menu(|ui| {
                 editor_state.mode = EditorMode::ContextMenu;
-                context_menu.show(ui, &zoom_pan, &self.context_menu, &mut operations)
+                context_menu.show(ui, &zoom_pan, self.context_menu, &mut operations)
             });
         }
 

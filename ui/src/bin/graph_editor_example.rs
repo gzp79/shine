@@ -1,11 +1,9 @@
-use egui::{CentralPanel, Color32, ComboBox, Pos2, SidePanel};
+use egui::{CentralPanel, Color32, ComboBox, Pos2, SidePanel, Id};
 use egui_extras::{Size, StripBuilder};
-use shine_core::atomic_refcell::AtomicRefCell;
-use shine_frp_editor::node_graph::{
+use shine_ui::node_graph::{
     Connection, ContextMenu, ContextMenuId, Graph, GraphEdit, GraphOperation, Input, Node, NodeId, Output, PortType,
 };
 use slotmap::SecondaryMap;
-use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SideTool {
@@ -15,8 +13,8 @@ enum SideTool {
 
 struct MyApp {
     tool: SideTool,
-    graph: Arc<AtomicRefCell<Graph>>,
-    context_menu: Arc<ContextMenu>,
+    graph: Graph,
+    context_menu: ContextMenu,
     context_menu_action: SecondaryMap<ContextMenuId, Box<dyn Fn(NodeId, Pos2) -> Node>>,
 }
 
@@ -84,10 +82,8 @@ impl Default for MyApp {
                 });
             }
 
-            (Arc::new(context_menu), context_menu_action)
+            (context_menu, context_menu_action)
         };
-
-        let graph = Arc::new(AtomicRefCell::new(graph));
 
         Self {
             tool: SideTool::Memory,
@@ -126,7 +122,7 @@ impl eframe::App for MyApp {
                         ui.painter()
                             .rect_filled(ui.available_rect_before_wrap(), 0.0, Color32::DARK_BLUE);
                         operations.append(
-                            &mut GraphEdit::new("graph edit 1", self.graph.clone(), self.context_menu.clone()).show(ui),
+                            &mut GraphEdit::new(Id::new("graph edit 1"), &self.graph, &self.context_menu).show(ui),
                         );
                     });
                     strip.cell(|ui| {
@@ -137,25 +133,24 @@ impl eframe::App for MyApp {
                         ui.painter()
                             .rect_filled(ui.available_rect_before_wrap(), 0.0, Color32::DARK_RED);
                         operations.append(
-                            &mut GraphEdit::new("graph edit 2", self.graph.clone(), self.context_menu.clone()).show(ui),
+                            &mut GraphEdit::new(Id::new("graph edit 2"), &self.graph, &self.context_menu).show(ui),
                         );
                     });
                 });
         });
 
-        let graph = &mut *self.graph.borrow_mut();
         for operation in operations {
             match operation {
                 GraphOperation::ContextMenu(pos, menu_id) => {
                     if let Some(builder) = self.context_menu_action.get(menu_id) {
-                        let _ = graph.add_node(|node_id| (builder)(node_id, pos));
+                        let _ = self.graph.add_node(|node_id| (builder)(node_id, pos));
                     }
                 }
                 GraphOperation::Connect(input_id, output_id) => {
-                    let _ = graph.add_connection(|connection_id| Connection::new(connection_id, input_id, output_id));
+                    let _ = self.graph.add_connection(|connection_id| Connection::new(connection_id, input_id, output_id));
                 }
                 GraphOperation::SetNodeLocation(node_id, pos) => {
-                    if let Some(node) = graph.node_mut(node_id) {
+                    if let Some(node) = self.graph.nodes.get_mut(node_id) {
                         node.set_location(pos);
                     }
                 }

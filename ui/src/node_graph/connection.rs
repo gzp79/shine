@@ -34,7 +34,7 @@ impl Connection {
         let end = port_visual.get_screen_pos(self.output_id.into());
 
         if let (Some(start), Some(end)) = (start, end) {
-            let style = graph.get_type(self.type_id).unwrap();
+            let style = graph.get_type(self.type_id);
             draw_connection(
                 ui.painter(),
                 start,

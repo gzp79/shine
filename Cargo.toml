@@ -5,5 +5,5 @@ members = [
     "test-macro",
     "test",
     "core",
-    "frp-editor",
+    "ui",
 ]

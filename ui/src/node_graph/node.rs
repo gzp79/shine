@@ -83,7 +83,7 @@ impl Node {
     ) {
         port_visual.set_screen_pos(port_id, port_pos);
 
-        let style = graph.get_type(port_id.type_id()).unwrap();
+        let style = graph.get_type(port_id.type_id());
         let r = style.port_size * zoom_pan.zoom;
         let dist = pointer_pos.map(|p| port_pos.distance_sq(p)).unwrap_or(f32::MAX);
         let is_hovered = dist < r * r * 1.3 && port_visual.is_ports_enabled() && !port_visual.has_hovered();
@@ -118,7 +118,7 @@ impl Node {
     ) -> NodeState {
         let id = zoom_pan.child_id(self.node_id);
 
-        let mut node_state = NodeState::load(ui, id).unwrap_or_else(|| NodeState::new());
+        let mut node_state = NodeState::load(ui, id).unwrap_or_else(NodeState::new);
         let screen_location = zoom_pan.pos2_area_to_screen(self.location);
 
         let response = Area::new(id)

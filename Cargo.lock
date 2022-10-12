@@ -577,7 +577,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f698f685bb0ad39e87109e2f695ded0bccde77d5d40bbf7590cb5561c1e3039d"
 dependencies = [
  "egui",
- "serde",
 ]
 
 [[package]]
@@ -1666,20 +1665,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shine-frp-editor"
-version = "0.1.0"
-dependencies = [
- "eframe",
- "egui",
- "egui_extras",
- "env_logger",
- "log",
- "shine-core",
- "slotmap",
- "thiserror",
-]
-
-[[package]]
 name = "shine-test"
 version = "0.1.0"
 dependencies = [
@@ -1699,6 +1684,20 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "shine-ui"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "egui_extras",
+ "env_logger",
+ "log",
+ "shine-core",
+ "slotmap",
+ "thiserror",
 ]
 
 [[package]]

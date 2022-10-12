@@ -48,7 +48,7 @@ impl ConnectionEditState {
                     (end_pos, start_pos)
                 };
 
-                let style = graph.get_type(start.type_id()).unwrap();
+                let style = graph.get_type(start.type_id());
                 let color = if self.valid {
                     style.hover_color
                 } else {

@@ -8,6 +8,9 @@ default = ["native_default"]
 native_default = []
 web_default = []
 
+[[example]]
+name = "graph_editor"
+
 [dependencies]
 log = "0.4"
 env_logger = "0.9"
@@ -19,4 +22,6 @@ egui_extras = "0.19"
 eframe = "0.19"
 
 shine-core = { path = "../core", version = "0.1.0" }
+
+
 

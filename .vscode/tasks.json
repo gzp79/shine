@@ -105,7 +105,7 @@
         {
             "label": "run graph editor (native)",
             "type": "shell",
-            "command": "cargo run -p shine-ui --bin graph_editor_example",
+            "command": "cargo run -p shine-ui --example graph_editor",
             "options": {
                 "env": {
                     "RUST_LOG": "trace",

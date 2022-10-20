@@ -1,4 +1,4 @@
-use egui::{CentralPanel, Color32, ComboBox, Pos2, SidePanel, Id};
+use egui::{CentralPanel, Color32, ComboBox, Id, Pos2, SidePanel};
 use egui_extras::{Size, StripBuilder};
 use shine_ui::node_graph::{
     Connection, ContextMenu, ContextMenuId, Graph, GraphEdit, GraphOperation, Input, Node, NodeId, Output, PortType,
@@ -147,7 +147,9 @@ impl eframe::App for MyApp {
                     }
                 }
                 GraphOperation::Connect(input_id, output_id) => {
-                    let _ = self.graph.add_connection(|connection_id| Connection::new(connection_id, input_id, output_id));
+                    let _ = self
+                        .graph
+                        .add_connection(|connection_id| Connection::new(connection_id, input_id, output_id));
                 }
                 GraphOperation::SetNodeLocation(node_id, pos) => {
                     if let Some(node) = self.graph.nodes.get_mut(node_id) {

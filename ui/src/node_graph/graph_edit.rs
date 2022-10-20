@@ -108,8 +108,7 @@ impl<'a> GraphEdit<'a> {
 
         // connection edit
         if matches!(editor_state.mode, EditorMode::EditConnection) {
-            let (mode, operation) =
-                connection_edit.update(ui, &zoom_pan, &port_visual, self.graph, |_, _| true);
+            let (mode, operation) = connection_edit.update(ui, &zoom_pan, &port_visual, self.graph, |_, _| true);
             if let Some(operation) = operation {
                 operations.push(operation);
             }

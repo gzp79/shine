@@ -1,7 +1,8 @@
 use egui::{CentralPanel, Color32, ComboBox, Id, Pos2, SidePanel};
 use egui_extras::{Size, StripBuilder};
 use shine_ui::node_graph::{
-    Connection, ContextMenu, ContextMenuId, Graph, GraphEdit, GraphOperation, Input, Node, NodeId, Output, PortType,
+    Connection, ContextMenu, ContextMenuId, Graph, GraphEdit, GraphOperation, Input, InputId, Node, NodeId, Output,
+    OutputId, PortType,
 };
 use slotmap::SecondaryMap;
 
@@ -36,7 +37,7 @@ impl Default for MyApp {
                         context_menu_action.insert(
                             menu_id,
                             Box::new(move |node_id, pos| {
-                                Node::new(node_id, "u8", pos, vec![], vec![Output::label("value", type_u8)])
+                                Node::new(node_id, "u8", pos, vec![], vec![Output::new("value", type_u8)])
                             }),
                         );
                     })
@@ -94,6 +95,12 @@ impl Default for MyApp {
     }
 }
 
+impl MyApp {
+    fn connection_validator(&self, input: InputId, output: OutputId) -> bool {
+        input.type_id() == output.type_id()
+    }
+}
+
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         SidePanel::left("Settings").show(ctx, |ui| {
@@ -122,7 +129,13 @@ impl eframe::App for MyApp {
                         ui.painter()
                             .rect_filled(ui.available_rect_before_wrap(), 0.0, Color32::DARK_BLUE);
                         operations.append(
-                            &mut GraphEdit::new(Id::new("graph edit 1"), &self.graph, &self.context_menu).show(ui),
+                            &mut GraphEdit::new(
+                                Id::new("graph edit 1"),
+                                &self.graph,
+                                &self.context_menu,
+                                &|input, output| self.connection_validator(input, output),
+                            )
+                            .show(ui),
                         );
                     });
                     strip.cell(|ui| {
@@ -133,7 +146,13 @@ impl eframe::App for MyApp {
                         ui.painter()
                             .rect_filled(ui.available_rect_before_wrap(), 0.0, Color32::DARK_RED);
                         operations.append(
-                            &mut GraphEdit::new(Id::new("graph edit 2"), &self.graph, &self.context_menu).show(ui),
+                            &mut GraphEdit::new(
+                                Id::new("graph edit 2"),
+                                &self.graph,
+                                &self.context_menu,
+                                &|input, output| self.connection_validator(input, output),
+                            )
+                            .show(ui),
                         );
                     });
                 });

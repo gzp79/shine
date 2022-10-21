@@ -106,10 +106,10 @@ impl ConnectionEditState {
                 if update_validity {
                     self.valid = match (self.start.unwrap(), self.end.unwrap()) {
                         (InputOutputId::Input(input_id), InputOutputId::Output(output_id)) => {
-                            input_id.type_id() == output_id.type_id() && (validate)(input_id, output_id)
+                            (validate)(input_id, output_id)
                         }
                         (InputOutputId::Output(output_id), InputOutputId::Input(input_id)) => {
-                            input_id.type_id() == output_id.type_id() && (validate)(input_id, output_id)
+                            (validate)(input_id, output_id)
                         }
                         _ => false,
                     };

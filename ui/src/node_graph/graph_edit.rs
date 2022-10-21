@@ -1,5 +1,6 @@
 use crate::node_graph::{
-    ConnectionEditState, ContextMenu, ContextMenuState, Graph, GraphOperation, PortViewState, ZoomPanState,
+    ConnectionEditState, ContextMenu, ContextMenuState, Graph, GraphOperation, InputId, OutputId, PortViewState,
+    ZoomPanState,
 };
 use egui::{Id, Key, Sense, Ui};
 
@@ -34,14 +35,21 @@ pub struct GraphEdit<'a> {
     id: Id,
     graph: &'a Graph,
     context_menu: &'a ContextMenu,
+    connection_validator: &'a dyn Fn(InputId, OutputId) -> bool,
 }
 
 impl<'a> GraphEdit<'a> {
-    pub fn new<I: Into<Id>>(id: I, graph: &'a Graph, context_menu: &'a ContextMenu) -> Self {
+    pub fn new<I: Into<Id>>(
+        id: I,
+        graph: &'a Graph,
+        context_menu: &'a ContextMenu,
+        connection_validator: &'a dyn Fn(InputId, OutputId) -> bool,
+    ) -> Self {
         Self {
             id: id.into(),
             graph,
             context_menu,
+            connection_validator,
         }
     }
 
@@ -108,7 +116,8 @@ impl<'a> GraphEdit<'a> {
 
         // connection edit
         if matches!(editor_state.mode, EditorMode::EditConnection) {
-            let (mode, operation) = connection_edit.update(ui, &zoom_pan, &port_visual, self.graph, |_, _| true);
+            let (mode, operation) =
+                connection_edit.update(ui, &zoom_pan, &port_visual, self.graph, self.connection_validator);
             if let Some(operation) = operation {
                 operations.push(operation);
             }

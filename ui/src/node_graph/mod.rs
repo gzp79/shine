@@ -6,6 +6,8 @@ mod port;
 pub use self::port::*;
 mod port_visual;
 use self::port_visual::*;
+mod argument;
+pub use self::argument::*;
 mod connection;
 pub use self::connection::*;
 mod node;
@@ -21,3 +23,5 @@ mod connection_edit;
 use self::connection_edit::*;
 mod graph_edit;
 pub use self::graph_edit::*;
+
+pub mod arguments;

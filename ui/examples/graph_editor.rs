@@ -1,8 +1,8 @@
 use egui::{CentralPanel, Color32, ComboBox, Id, Pos2, SidePanel};
 use egui_extras::{Size, StripBuilder};
 use shine_ui::node_graph::{
-    Connection, ContextMenu, ContextMenuId, Graph, GraphEdit, GraphOperation, Input, InputId, Node, NodeId, Output,
-    OutputId, PortType,
+    arguments, Connection, ContextMenu, ContextMenuId, Graph, GraphEdit, GraphOperation, Input, InputId,
+    Node, NodeId, Output, OutputId, PortType,
 };
 use slotmap::SecondaryMap;
 
@@ -37,7 +37,14 @@ impl Default for MyApp {
                         context_menu_action.insert(
                             menu_id,
                             Box::new(move |node_id, pos| {
-                                Node::new(node_id, "u8", pos, vec![], vec![Output::new("value", type_u8)])
+                                Node::new(
+                                    node_id,
+                                    "u8",
+                                    pos,
+                                    vec![],
+                                    vec![Output::new("value", type_u8)],
+                                    vec![Box::new(arguments::HelloWorld)],
+                                )
                             }),
                         );
                     })
@@ -45,7 +52,14 @@ impl Default for MyApp {
                         context_menu_action.insert(
                             menu_id,
                             Box::new(move |node_id, pos| {
-                                Node::new(node_id, "u16", pos, vec![], vec![Output::new("value", type_u16)])
+                                Node::new(
+                                    node_id,
+                                    "u16",
+                                    pos,
+                                    vec![],
+                                    vec![Output::new("value", type_u16)],
+                                    vec![],
+                                )
                             }),
                         );
                     })
@@ -53,7 +67,14 @@ impl Default for MyApp {
                         context_menu_action.insert(
                             menu_id,
                             Box::new(move |node_id, pos| {
-                                Node::new(node_id, "u32", pos, vec![], vec![Output::new("value", type_u32)])
+                                Node::new(
+                                    node_id,
+                                    "u32",
+                                    pos,
+                                    vec![],
+                                    vec![Output::new("value", type_u32)],
+                                    vec![],
+                                )
                             }),
                         );
                     });
@@ -77,6 +98,7 @@ impl Default for MyApp {
                                     Input::new("in4", type_u32),
                                 ],
                                 vec![Output::new("zipped", type_u8)],
+                                vec![],
                             )
                         }),
                     );

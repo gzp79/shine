@@ -1,6 +1,6 @@
 use crate::{
     node_graph::{
-        Graph, GraphOperation, Input, InputId, InputOutputId, Output, OutputId, PortSelection, PortViewState,
+        Argument, Graph, GraphOperation, Input, InputId, InputOutputId, Output, OutputId, PortSelection, PortViewState,
         ZoomPanState,
     },
     utils::{FrameWithHeader, Scale},
@@ -41,6 +41,7 @@ pub struct Node {
     pub caption: String,
     pub inputs: Vec<Input>,
     pub outputs: Vec<Output>,
+    pub arguments: Vec<Box<dyn Argument>>,
     pub location: Pos2,
 }
 
@@ -51,12 +52,14 @@ impl Node {
         location: Pos2,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
+        arguments: Vec<Box<dyn Argument>>,
     ) -> Self {
         Self {
             node_id,
             caption: caption.to_string(),
             inputs,
             outputs,
+            arguments,
             location,
         }
     }
@@ -130,39 +133,34 @@ impl Node {
                     .show(ui, |ui| {
                         let mut port_infos = Vec::<(InputOutputId, f32)>::new();
                         let port_top = ui.min_rect().bottom();
+
+                        for argument in self.arguments.iter() {
+                            argument.show(ui, operations);
+                        }
+
                         ui.horizontal(|ui| {
                             //inputs
                             ui.vertical(|ui| {
                                 let mut height_before = port_top;
                                 for (idx, input) in self.inputs.iter().enumerate() {
-                                    ui.horizontal(|ui| {
-                                        input.show(ui);
-                                        let mut a = 2.;
-                                        ui.add(egui::Slider::new(&mut a, 0.0..=2000.0).text("set me"));
-
-                                        let height_after = ui.min_rect().bottom();
-                                        let y = (height_after + height_before) / 2.;
-                                        height_before = height_after;
-                                        let id = InputId::new(self.node_id, input.type_id, idx);
-                                        port_infos.push((id.into(), y));
-                                    });
+                                    input.show(ui);
+                                    let height_after = ui.min_rect().bottom();
+                                    let y = (height_after + height_before) / 2.;
+                                    height_before = height_after;
+                                    let id = InputId::new(self.node_id, input.type_id, idx);
+                                    port_infos.push((id.into(), y));
                                 }
                             });
                             // outputs
                             ui.vertical(|ui| {
                                 let mut height_before = port_top;
                                 for (idx, output) in self.outputs.iter().enumerate() {
-                                    ui.horizontal(|ui| {
-                                        output.show(ui);
-                                        let mut a = 4.;
-                                        ui.add(egui::Slider::new(&mut a, 0.0..=200.0).text("set \n\nme"));
-
-                                        let height_after = ui.min_rect().bottom();
-                                        let y = (height_after + height_before) / 2.;
-                                        height_before = height_after;
-                                        let id = OutputId::new(self.node_id, output.type_id, idx);
-                                        port_infos.push((id.into(), y));
-                                    });
+                                    output.show(ui);
+                                    let height_after = ui.min_rect().bottom();
+                                    let y = (height_after + height_before) / 2.;
+                                    height_before = height_after;
+                                    let id = OutputId::new(self.node_id, output.type_id, idx);
+                                    port_infos.push((id.into(), y));
                                 }
                             });
                         });

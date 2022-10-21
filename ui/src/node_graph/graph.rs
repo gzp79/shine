@@ -39,11 +39,26 @@ impl Graph {
         self.nodes.insert_with_key(node)
     }
 
+    pub fn node(&self, node_id: NodeId) -> Option<&Node> {
+        self.nodes.get(node_id)
+    }
+
+    pub fn node_mut(&mut self, node_id: NodeId) -> Option<&mut Node> {
+        self.nodes.get_mut(node_id)
+    }
+
     /// Add a new connection to the graph with the given builder
     pub fn add_connection<F>(&mut self, connection: F) -> ConnectionId
     where
         F: FnOnce(ConnectionId) -> Connection,
     {
         self.connections.insert_with_key(connection)
+    }
+
+    /// Clear the graph, but keeps the allocated memory.
+    pub fn clear(&mut self) {
+        self.types.clear();
+        self.nodes.clear();
+        self.connections.clear();
     }
 }

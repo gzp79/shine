@@ -44,7 +44,7 @@ impl Default for MyApp {
                         context_menu_action.insert(
                             menu_id,
                             Box::new(move |node_id, pos| {
-                                Node::new(node_id, "u16", pos, vec![], vec![Output::label("value", type_u16)])
+                                Node::new(node_id, "u16", pos, vec![], vec![Output::new("value", type_u16)])
                             }),
                         );
                     })
@@ -52,7 +52,7 @@ impl Default for MyApp {
                         context_menu_action.insert(
                             menu_id,
                             Box::new(move |node_id, pos| {
-                                Node::new(node_id, "u32", pos, vec![], vec![Output::label("value", type_u32)])
+                                Node::new(node_id, "u32", pos, vec![], vec![Output::new("value", type_u32)])
                             }),
                         );
                     });
@@ -70,12 +70,12 @@ impl Default for MyApp {
                                 "zip",
                                 pos,
                                 vec![
-                                    Input::label("in1", type_u8),
-                                    Input::label("in2", type_u16),
-                                    Input::label("in3", type_u32),
-                                    Input::label("in4", type_u32),
+                                    Input::new("in1", type_u8),
+                                    Input::new("in2", type_u16),
+                                    Input::new("in3", type_u32),
+                                    Input::new("in4", type_u32),
                                 ],
-                                vec![Output::label("zipped", type_u8)],
+                                vec![Output::new("zipped", type_u8)],
                             )
                         }),
                     );
@@ -153,7 +153,7 @@ impl eframe::App for MyApp {
                 }
                 GraphOperation::SetNodeLocation(node_id, pos) => {
                     if let Some(node) = self.graph.nodes.get_mut(node_id) {
-                        node.set_location(pos);
+                        node.location = pos;
                     }
                 }
             }

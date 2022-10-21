@@ -43,6 +43,13 @@ impl ContextMenu {
             corrent: &mut self.root,
         }
     }
+
+    pub fn clear(&mut self) {
+        self.items.clear();
+        if let ContextMenuKind::SubMenu { items, .. } = &mut self.root {
+            items.clear();
+        }
+    }
 }
 
 pub struct ConextSubMenuBuilder<'m> {

@@ -3,20 +3,16 @@ use egui::Ui;
 
 /// Input port
 pub struct Input {
-    name: String,
-    type_id: PortTypeId,
+    pub name: String,
+    pub type_id: PortTypeId,
 }
 
 impl Input {
-    pub fn label<S: ToString>(name: S, type_id: PortTypeId) -> Self {
+    pub fn new<S: ToString>(name: S, type_id: PortTypeId) -> Self {
         Self {
             name: name.to_string(),
             type_id,
         }
-    }
-
-    pub fn type_id(&self) -> PortTypeId {
-        self.type_id
     }
 
     pub(in crate::node_graph) fn show(&self, ui: &mut Ui) {
@@ -47,20 +43,16 @@ impl InputId {
 
 /// Output port
 pub struct Output {
-    name: String,
-    type_id: PortTypeId,
+    pub name: String,
+    pub type_id: PortTypeId,
 }
 
 impl Output {
-    pub fn label<S: ToString>(name: S, type_id: PortTypeId) -> Self {
+    pub fn new<S: ToString>(name: S, type_id: PortTypeId) -> Self {
         Self {
             name: name.to_string(),
             type_id,
         }
-    }
-
-    pub fn type_id(&self) -> PortTypeId {
-        self.type_id
     }
 
     pub(in crate::node_graph) fn show(&self, ui: &mut Ui) -> f32 {

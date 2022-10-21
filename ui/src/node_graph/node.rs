@@ -38,10 +38,10 @@ impl NodeState {
 
 pub struct Node {
     node_id: NodeId,
-    caption: String,
-    inputs: Vec<Input>,
-    outputs: Vec<Output>,
-    location: Pos2,
+    pub caption: String,
+    pub inputs: Vec<Input>,
+    pub outputs: Vec<Output>,
+    pub location: Pos2,
 }
 
 impl Node {
@@ -59,14 +59,6 @@ impl Node {
             outputs,
             location,
         }
-    }
-
-    pub fn caption(&self) -> &str {
-        &self.caption
-    }
-
-    pub fn set_location(&mut self, location: Pos2) {
-        self.location = location;
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -151,7 +143,7 @@ impl Node {
                                         let height_after = ui.min_rect().bottom();
                                         let y = (height_after + height_before) / 2.;
                                         height_before = height_after;
-                                        let id = InputId::new(self.node_id, input.type_id(), idx);
+                                        let id = InputId::new(self.node_id, input.type_id, idx);
                                         port_infos.push((id.into(), y));
                                     });
                                 }
@@ -168,7 +160,7 @@ impl Node {
                                         let height_after = ui.min_rect().bottom();
                                         let y = (height_after + height_before) / 2.;
                                         height_before = height_after;
-                                        let id = OutputId::new(self.node_id, output.type_id(), idx);
+                                        let id = OutputId::new(self.node_id, output.type_id, idx);
                                         port_infos.push((id.into(), y));
                                     });
                                 }

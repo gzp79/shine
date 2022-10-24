@@ -1,5 +1,5 @@
 use crate::node_graph::{
-    Connection, ConnectionId, ContextMenuId, InputId, Node, NodeId, OutputId, PortType, PortTypeId,
+    Connection, ConnectionId, ContextMenuId, InputId, Node, NodeData, NodeId, OutputId, PortType, PortTypeId,
 };
 use egui::Pos2;
 use slotmap::SlotMap;
@@ -13,14 +13,29 @@ pub enum GraphOperation {
 }
 
 /// The node graph.
-#[derive(Default)]
-pub struct Graph {
+pub struct Graph<N>
+where
+    N: NodeData,
+{
     pub types: SlotMap<PortTypeId, PortType>,
-    pub nodes: SlotMap<NodeId, Node>,
+    pub nodes: SlotMap<NodeId, Node<N>>,
     pub connections: SlotMap<ConnectionId, Connection>,
 }
 
-impl Graph {
+impl<N> Default for Graph<N>
+where
+    N: NodeData,
+{
+    fn default() -> Self {
+        Self {
+            types: SlotMap::default(),
+            nodes: SlotMap::default(),
+            connections: SlotMap::default(),
+        }
+    }
+}
+
+impl<N: NodeData> Graph<N> {
     /// Create a new port-type.
     pub fn add_type(&mut self, port: PortType) -> PortTypeId {
         self.types.insert(port)
@@ -34,7 +49,7 @@ impl Graph {
     /// Add a new node to the graph with the given builder.
     pub fn add_node<F>(&mut self, node: F) -> NodeId
     where
-        F: FnOnce(NodeId) -> Node,
+        F: FnOnce(NodeId) -> Node<N>,
     {
         self.nodes.insert_with_key(node)
     }

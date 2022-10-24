@@ -1,6 +1,6 @@
 use crate::{
     node_graph::{
-        Argument, Graph, GraphOperation, Input, InputId, InputOutputId, Output, OutputId, PortSelection, PortViewState,
+        Graph, GraphOperation, Input, InputId, InputOutputId, Output, OutputId, PortSelection, PortViewState,
         ZoomPanState,
     },
     utils::{FrameWithHeader, Scale},
@@ -36,30 +36,38 @@ impl NodeState {
     }
 }
 
-pub struct Node {
+pub trait NodeData {
+    fn show(&self, ui: &mut Ui, operations: &mut Vec<GraphOperation>);
+}
+
+impl NodeData for () {
+    fn show(&self, _ui: &mut Ui, _operations: &mut Vec<GraphOperation>) {}
+}
+
+pub struct Node<N: NodeData> {
     node_id: NodeId,
     pub caption: String,
+    pub data: N,
     pub inputs: Vec<Input>,
     pub outputs: Vec<Output>,
-    pub arguments: Vec<Box<dyn Argument>>,
     pub location: Pos2,
 }
 
-impl Node {
+impl<N: NodeData> Node<N> {
     pub fn new<S: ToString>(
         node_id: NodeId,
         caption: S,
         location: Pos2,
+        data: N,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
-        arguments: Vec<Box<dyn Argument>>,
     ) -> Self {
         Self {
             node_id,
             caption: caption.to_string(),
+            data,
             inputs,
             outputs,
-            arguments,
             location,
         }
     }
@@ -70,7 +78,7 @@ impl Node {
         painter: &Painter,
         zoom_pan: &ZoomPanState,
         port_visual: &mut PortViewState,
-        graph: &Graph,
+        graph: &Graph<N>,
         port_id: InputOutputId,
         port_pos: Pos2,
         pointer_pos: Option<Pos2>,
@@ -108,7 +116,7 @@ impl Node {
         ui: &mut Ui,
         zoom_pan: &ZoomPanState,
         port_visual: &mut PortViewState,
-        graph: &Graph,
+        graph: &Graph<N>,
         operations: &mut Vec<GraphOperation>,
     ) -> NodeState {
         let id = zoom_pan.child_id(self.node_id);
@@ -131,13 +139,10 @@ impl Node {
                 FrameWithHeader::new(&self.caption)
                     .frame(Frame::window(ui.style()).shadow(Shadow::default()).inner_margin(margin))
                     .show(ui, |ui| {
+                        self.data.show(ui, operations);
+
                         let mut port_infos = Vec::<(InputOutputId, f32)>::new();
                         let port_top = ui.min_rect().bottom();
-
-                        for argument in self.arguments.iter() {
-                            argument.show(ui, operations);
-                        }
-
                         ui.horizontal(|ui| {
                             //inputs
                             ui.vertical(|ui| {

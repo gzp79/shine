@@ -4,14 +4,13 @@ use slotmap::{new_key_type, SlotMap};
 
 new_key_type! { pub struct ContextMenuId; }
 
-pub struct ContextMenuItem {
-    pub name: String,
+pub trait ContextMenuData {
+    fn on_select(&self, operations: &mut Vec<GraphOperation>);
 }
 
-impl From<&str> for ContextMenuItem {
-    fn from(name: &str) -> Self {
-        ContextMenuItem { name: name.into() }
-    }
+pub struct ContextMenuItem<M: ContextMenuData> {
+    pub name: String,
+    pub data: M,
 }
 
 enum ContextMenuKind {
@@ -19,12 +18,14 @@ enum ContextMenuKind {
     LeafItem(ContextMenuId),
 }
 
-pub struct ContextMenu {
-    items: SlotMap<ContextMenuId, ContextMenuItem>,
+pub struct ContextMenu<M> 
+where M: ContextMenuData {
+    items: SlotMap<ContextMenuId, ContextMenuItem<M>>,
     root: ContextMenuKind,
 }
 
-impl Default for ContextMenu {
+impl<M> Default for ContextMenu<M>
+where M: ContextMenuData {
     fn default() -> Self {
         Self {
             items: SlotMap::default(),
@@ -36,8 +37,8 @@ impl Default for ContextMenu {
     }
 }
 
-impl ContextMenu {
-    pub fn builder(&mut self) -> ConextSubMenuBuilder<'_> {
+impl<M: ContextMenuData> ContextMenu<M> {
+    pub fn builder(&mut self) -> ConextSubMenuBuilder<'_, M> {
         ConextSubMenuBuilder {
             menu_items: &mut self.items,
             corrent: &mut self.root,
@@ -52,13 +53,16 @@ impl ContextMenu {
     }
 }
 
-pub struct ConextSubMenuBuilder<'m> {
-    menu_items: &'m mut SlotMap<ContextMenuId, ContextMenuItem>,
+pub struct ConextSubMenuBuilder<'m, M> 
+where M: ContextMenuData {
+    menu_items: &'m mut SlotMap<ContextMenuId, ContextMenuItem<M>>,
     corrent: &'m mut ContextMenuKind,
 }
 
-impl<'m> ConextSubMenuBuilder<'m> {
-    pub fn add_item_with<I: Into<ContextMenuItem>, F: FnOnce(ContextMenuId)>(&mut self, item: I, with: F) -> &mut Self {
+impl<'m, M> ConextSubMenuBuilder<'m, M>
+where M: ContextMenuData
+{
+    pub fn add_item_with<I: Into<ContextMenuItem<M>>, F: FnOnce(ContextMenuId)>(&mut self, item: I, with: F) -> &mut Self {
         let id = self.menu_items.insert(item.into());
         if let ContextMenuKind::SubMenu { items, .. } = &mut self.corrent {
             items.push(ContextMenuKind::LeafItem(id));
@@ -69,11 +73,11 @@ impl<'m> ConextSubMenuBuilder<'m> {
         }
     }
 
-    pub fn add_item<I: Into<ContextMenuItem>>(&mut self, item: I) -> &mut Self {
+    pub fn add_item<I: Into<ContextMenuItem<M>>>(&mut self, item: I) -> &mut Self {
         self.add_item_with(item, |_| {})
     }
 
-    pub fn add_group<'n, S: ToString>(&'n mut self, name: S) -> ConextSubMenuBuilder<'n>
+    pub fn add_group<'n, S: ToString>(&'n mut self, name: S) -> ConextSubMenuBuilder<'n, M>
     where
         'm: 'n,
     {
@@ -117,13 +121,13 @@ impl ContextMenuState {
         ui.data().insert_temp(id, self);
     }
 
-    fn show_recursive(
+    fn show_recursive<M>(
         &self,
-        menu_items: &SlotMap<ContextMenuId, ContextMenuItem>,
+        menu_items: &SlotMap<ContextMenuId, ContextMenuItem<M>>,
         current: &ContextMenuKind,
         ui: &mut Ui,
         operations: &mut Vec<GraphOperation>,
-    ) {
+    ) where M: ContextMenuData {
         match current {
             ContextMenuKind::SubMenu { name, items } => {
                 ui.menu_button(name, |ui| {
@@ -142,13 +146,13 @@ impl ContextMenuState {
         }
     }
 
-    fn show_filtered(
+    fn show_filtered<M>(
         &self,
-        menu_items: &SlotMap<ContextMenuId, ContextMenuItem>,
+        menu_items: &SlotMap<ContextMenuId, ContextMenuItem<M>>,
         filter: &[&str],
         ui: &mut Ui,
         operations: &mut Vec<GraphOperation>,
-    ) {
+    ) where M: ContextMenuData {
         for (id, item) in menu_items {
             if filter.iter().any(|filter| item.name.starts_with(filter)) && ui.button(&item.name).clicked() {
                 operations.push(GraphOperation::ContextMenu(self.start_location, id));
@@ -157,13 +161,13 @@ impl ContextMenuState {
         }
     }
 
-    pub fn show(
+    pub fn show<M>(
         &mut self,
         ui: &mut Ui,
         zoom_pan: &ZoomPanState,
-        content: &ContextMenu,
+        content: &ContextMenu<M>,
         operations: &mut Vec<GraphOperation>,
-    ) {
+    ) where M: ContextMenuData {
         ui.horizontal(|ui| {
             ui.text_edit_singleline(&mut self.filter).request_focus();
             if ui.button("X").clicked() {

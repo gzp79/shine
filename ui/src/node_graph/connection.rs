@@ -1,4 +1,6 @@
-use crate::node_graph::{utils::draw_connection, Graph, InputId, OutputId, PortTypeId, PortViewState, ZoomPanState};
+use crate::node_graph::{
+    utils::draw_connection, Graph, InputId, NodeData, OutputId, PortTypeId, PortViewState, ZoomPanState,
+};
 use egui::{Stroke, Ui};
 use slotmap::new_key_type;
 
@@ -23,13 +25,15 @@ impl Connection {
         }
     }
 
-    pub(in crate::node_graph) fn show(
+    pub(in crate::node_graph) fn show<N>(
         &self,
         ui: &mut Ui,
         zoom_pan: &ZoomPanState,
         port_visual: &PortViewState,
-        graph: &Graph,
-    ) {
+        graph: &Graph<N>,
+    ) where
+        N: NodeData,
+    {
         let start = port_visual.get_screen_pos(self.input_id.into());
         let end = port_visual.get_screen_pos(self.output_id.into());
 

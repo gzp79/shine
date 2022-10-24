@@ -1,8 +1,8 @@
 use egui::{CentralPanel, Color32, ComboBox, Id, Pos2, SidePanel};
 use egui_extras::{Size, StripBuilder};
 use shine_ui::node_graph::{
-    arguments, Connection, ContextMenu, ContextMenuId, Graph, GraphEdit, GraphOperation, Input, InputId,
-    Node, NodeId, Output, OutputId, PortType,
+    Connection, ContextMenu, ContextMenuId, Graph, GraphEdit, GraphOperation, Input, InputId, Node,
+    NodeData, NodeId, Output, OutputId, PortType, ContextMenuData,
 };
 use slotmap::SecondaryMap;
 
@@ -12,11 +12,27 @@ enum SideTool {
     Settings,
 }
 
+struct MyContextMenuData {
+
+}
+
+impl ContextMenuData for MyContextMenuData {
+    fn on_select(&self, operations: &mut Vec<GraphOperation>) {
+        todo!()
+    }
+}
+
+struct MyNodeData;
+
+impl NodeData for MyNodeData {
+    fn show(&self, _ui: &mut egui::Ui, _operations: &mut Vec<GraphOperation>) {}
+}
+
 struct MyApp {
     tool: SideTool,
-    graph: Graph,
-    context_menu: ContextMenu,
-    context_menu_action: SecondaryMap<ContextMenuId, Box<dyn Fn(NodeId, Pos2) -> Node>>,
+    graph: Graph<MyNodeData>,
+    context_menu: ContextMenu<MyContextMenuData>,
+    context_menu_action: SecondaryMap<ContextMenuId, Box<dyn Fn(NodeId, Pos2) -> Node<MyNodeData>>>,
 }
 
 impl Default for MyApp {
@@ -28,7 +44,7 @@ impl Default for MyApp {
 
         let (context_menu, context_menu_action) = {
             let mut context_menu = ContextMenu::default();
-            let mut context_menu_action = SecondaryMap::<_, Box<dyn Fn(NodeId, Pos2) -> Node>>::default();
+            let mut context_menu_action = SecondaryMap::<_, Box<dyn Fn(NodeId, Pos2) -> Node<MyNodeData>>>::default();
             let mut builder = context_menu.builder();
             {
                 let mut constants = builder.add_group("constants");
@@ -41,9 +57,9 @@ impl Default for MyApp {
                                     node_id,
                                     "u8",
                                     pos,
+                                    MyNodeData,
                                     vec![],
                                     vec![Output::new("value", type_u8)],
-                                    vec![Box::new(arguments::HelloWorld)],
                                 )
                             }),
                         );
@@ -56,9 +72,9 @@ impl Default for MyApp {
                                     node_id,
                                     "u16",
                                     pos,
+                                    MyNodeData,
                                     vec![],
                                     vec![Output::new("value", type_u16)],
-                                    vec![],
                                 )
                             }),
                         );
@@ -71,9 +87,9 @@ impl Default for MyApp {
                                     node_id,
                                     "u32",
                                     pos,
+                                    MyNodeData,
                                     vec![],
                                     vec![Output::new("value", type_u32)],
-                                    vec![],
                                 )
                             }),
                         );
@@ -91,6 +107,7 @@ impl Default for MyApp {
                                 node_id,
                                 "zip",
                                 pos,
+                                MyNodeData,
                                 vec![
                                     Input::new("in1", type_u8),
                                     Input::new("in2", type_u16),
@@ -98,7 +115,6 @@ impl Default for MyApp {
                                     Input::new("in4", type_u32),
                                 ],
                                 vec![Output::new("zipped", type_u8)],
-                                vec![],
                             )
                         }),
                     );

@@ -1,6 +1,6 @@
 use crate::node_graph::{
-    utils::draw_connection, EditorMode, Graph, GraphOperation, InputId, InputOutputId, OutputId, PortSelection,
-    PortViewState, ZoomPanState,
+    utils::draw_connection, EditorMode, Graph, GraphOperation, InputId, InputOutputId, NodeData, OutputId,
+    PortSelection, PortViewState, ZoomPanState,
 };
 use egui::{Id, Pos2, Stroke, Ui};
 
@@ -39,7 +39,7 @@ impl ConnectionEditState {
         }
     }
 
-    fn draw(&self, ui: &mut Ui, zoom_pan: &ZoomPanState, graph: &Graph) {
+    fn draw<N: NodeData>(&self, ui: &mut Ui, zoom_pan: &ZoomPanState, graph: &Graph<N>) {
         zoom_pan.show_clipped(ui, |ui| {
             if let (Some(start), Some(start_pos), Some(end_pos)) = (&self.start, self.start_pos, self.end_pos) {
                 let (start_pos, end_pos) = if start.is_input() {
@@ -67,15 +67,16 @@ impl ConnectionEditState {
         })
     }
 
-    pub fn update<F>(
+    pub fn update<N, F>(
         &mut self,
         ui: &mut Ui,
         zoom_pan: &ZoomPanState,
         port_visual: &PortViewState,
-        graph: &Graph,
+        graph: &Graph<N>,
         validate: F,
     ) -> (EditorMode, Option<GraphOperation>)
     where
+        N: NodeData,
         F: FnOnce(InputId, OutputId) -> bool,
     {
         let pointer_pos = ui.ctx().pointer_latest_pos().unwrap_or(Pos2::ZERO);

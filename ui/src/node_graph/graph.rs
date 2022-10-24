@@ -67,6 +67,15 @@ where
         self.nodes.insert_with_key(node)
     }
 
+    /// Remove a node with its connections from the graph
+    pub fn remove_node(&mut self, node_id: NodeId) {
+        self.nodes.remove(node_id);
+        // also remove connections
+        self.connections.retain(|_, connection| {
+            connection.input_id.node_id() != node_id && connection.output_id.node_id() != node_id
+        })
+    }
+
     /// Add a new connection to the graph with the given builder
     pub fn add_connection<F>(&mut self, connection: F) -> ConnectionId
     where

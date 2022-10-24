@@ -44,6 +44,8 @@ enum MyContextMenuData {
     U16,
     U32,
     Complex,
+
+    Clear,
 }
 
 impl ContextMenuData for MyContextMenuData {
@@ -110,6 +112,10 @@ impl ContextMenuData for MyContextMenuData {
                     )
                 });
             }
+            MyContextMenuData::Clear => {
+                graph.nodes.clear();
+                graph.connections.clear();
+            }
         }
     }
 }
@@ -136,8 +142,8 @@ impl Default for MyApp {
                 .add_item("u8", MyContextMenuData::U8)
                 .add_item("u16", MyContextMenuData::U16)
                 .add_item("u32", MyContextMenuData::U32);
-
             builder.add_group("logic").add_item("complex", MyContextMenuData::Complex);
+            builder.add_item("clear", MyContextMenuData::Clear);
 
             context_menu
         };

@@ -40,12 +40,13 @@ impl GraphData for MyGraphData {
 
 #[derive(Clone)]
 enum MyContextMenuData {
-    U8,
-    U16,
-    U32,
-    Complex,
+    AddMinimalNode,
+    AddU8Node,
+    AddU16Node,
+    AddU32Node,
+    AddComplexNode,
 
-    Clear,
+    ClearGraph,
 }
 
 impl ContextMenuData for MyContextMenuData {
@@ -53,7 +54,19 @@ impl ContextMenuData for MyContextMenuData {
 
     fn on_select(&self, graph: &mut Graph<Self::GraphData>, location: Pos2) {
         match self {
-            MyContextMenuData::U8 => {
+            MyContextMenuData::AddMinimalNode => {
+                graph.add_node(|node_id| {
+                    Node::new(
+                        node_id,
+                        "minimal",
+                        location,
+                        MyNodeData,
+                        vec![],
+                        vec![],
+                    )
+                });
+            }
+            MyContextMenuData::AddU8Node => {
                 let type_u8 = graph.data.type_u8;
                 graph.add_node(|node_id| {
                     Node::new(
@@ -66,7 +79,7 @@ impl ContextMenuData for MyContextMenuData {
                     )
                 });
             }
-            MyContextMenuData::U16 => {
+            MyContextMenuData::AddU16Node => {
                 let type_u16 = graph.data.type_u16;
                 graph.add_node(|node_id| {
                     Node::new(
@@ -79,7 +92,7 @@ impl ContextMenuData for MyContextMenuData {
                     )
                 });
             }
-            MyContextMenuData::U32 => {
+            MyContextMenuData::AddU32Node => {
                 let type_u32 = graph.data.type_u32;
                 graph.add_node(|node_id| {
                     Node::new(
@@ -92,7 +105,7 @@ impl ContextMenuData for MyContextMenuData {
                     )
                 });
             }
-            MyContextMenuData::Complex => {
+            MyContextMenuData::AddComplexNode => {
                 let type_u8 = graph.data.type_u8;
                 let type_u16 = graph.data.type_u16;
                 let type_u32 = graph.data.type_u32;
@@ -112,7 +125,7 @@ impl ContextMenuData for MyContextMenuData {
                     )
                 });
             }
-            MyContextMenuData::Clear => {
+            MyContextMenuData::ClearGraph => {
                 graph.nodes.clear();
                 graph.connections.clear();
             }
@@ -139,11 +152,13 @@ impl Default for MyApp {
 
             builder
                 .add_group("constants")
-                .add_item("u8", MyContextMenuData::U8)
-                .add_item("u16", MyContextMenuData::U16)
-                .add_item("u32", MyContextMenuData::U32);
-            builder.add_group("logic").add_item("complex", MyContextMenuData::Complex);
-            builder.add_item("clear", MyContextMenuData::Clear);
+                .add_item("u8", MyContextMenuData::AddU8Node)
+                .add_item("u16", MyContextMenuData::AddU16Node)
+                .add_item("u32", MyContextMenuData::AddU32Node);
+            builder.add_group("logic")
+                .add_item("minimal", MyContextMenuData::AddMinimalNode)
+                .add_item("complex", MyContextMenuData::AddComplexNode);                        
+            builder.add_item("clear", MyContextMenuData::ClearGraph);
 
             context_menu
         };

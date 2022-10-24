@@ -1693,6 +1693,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui_extras",
+ "emath",
  "env_logger",
  "log",
  "shine-core",

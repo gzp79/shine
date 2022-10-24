@@ -1,51 +1,25 @@
 use crate::{
     node_graph::{
-        Graph, GraphOperation, Input, InputId, InputOutputId, Output, OutputId, PortSelection, PortViewState,
+        Input, InputId, InputOutputId, Output, OutputId, PortSelection, PortType, PortTypeId, PortViewState,
         ZoomPanState,
     },
     utils::{FrameWithHeader, Scale},
 };
 use eframe::epaint::Shadow;
 use egui::{pos2, vec2, Area, Frame, Id, Order, Painter, Pos2, Rect, Stroke, Ui, Vec2};
-use slotmap::new_key_type;
+use slotmap::{new_key_type, SlotMap};
 
 new_key_type! { pub struct NodeId; }
 
-#[derive(Clone)]
-pub(in crate::node_graph) struct NodeState {
-    /// node drag was started in this frame
-    pub drag_started: bool,
-    /// this node is dragged
-    pub dragged: bool,
+pub trait NodeData: Clone + Send + Sync + 'static {
+    fn show(&mut self, _ui: &mut Ui) {}
+    fn on_moved(&mut self, _new_location: Pos2) {}
 }
 
-impl NodeState {
-    fn load(ui: &mut Ui, id: Id) -> Option<NodeState> {
-        ui.data().get_temp(id)
-    }
-
-    fn store(self, ui: &mut Ui, id: Id) {
-        ui.data().insert_temp(id, self);
-    }
-
-    fn new() -> Self {
-        Self {
-            drag_started: false,
-            dragged: false,
-        }
-    }
-}
-
-pub trait NodeData {
-    fn show(&self, ui: &mut Ui, operations: &mut Vec<GraphOperation>);
-}
-
-impl NodeData for () {
-    fn show(&self, _ui: &mut Ui, _operations: &mut Vec<GraphOperation>) {}
-}
+impl NodeData for () {}
 
 pub struct Node<N: NodeData> {
-    node_id: NodeId,
+    id: NodeId,
     pub caption: String,
     pub data: N,
     pub inputs: Vec<Input>,
@@ -63,7 +37,7 @@ impl<N: NodeData> Node<N> {
         outputs: Vec<Output>,
     ) -> Self {
         Self {
-            node_id,
+            id: node_id,
             caption: caption.to_string(),
             data,
             inputs,
@@ -72,13 +46,17 @@ impl<N: NodeData> Node<N> {
         }
     }
 
+    pub fn id(&self) -> NodeId {
+        self.id
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn draw_port(
         &self,
         painter: &Painter,
         zoom_pan: &ZoomPanState,
         port_visual: &mut PortViewState,
-        graph: &Graph<N>,
+        style: &PortType,
         port_id: InputOutputId,
         port_pos: Pos2,
         pointer_pos: Option<Pos2>,
@@ -86,7 +64,6 @@ impl<N: NodeData> Node<N> {
     ) {
         port_visual.set_screen_pos(port_id, port_pos);
 
-        let style = graph.get_type(port_id.type_id());
         let r = style.port_size * zoom_pan.zoom;
         let dist = pointer_pos.map(|p| port_pos.distance_sq(p)).unwrap_or(f32::MAX);
         let is_hovered = dist < r * r * 1.3 && port_visual.is_ports_enabled() && !port_visual.has_hovered();
@@ -112,14 +89,13 @@ impl<N: NodeData> Node<N> {
     }
 
     pub(in crate::node_graph) fn show(
-        &self,
+        &mut self,
         ui: &mut Ui,
         zoom_pan: &ZoomPanState,
         port_visual: &mut PortViewState,
-        graph: &Graph<N>,
-        operations: &mut Vec<GraphOperation>,
+        type_info: &SlotMap<PortTypeId, PortType>,
     ) -> NodeState {
-        let id = zoom_pan.child_id(self.node_id);
+        let id = zoom_pan.child_id(self.id);
 
         let mut node_state = NodeState::load(ui, id).unwrap_or_else(NodeState::new);
         let screen_location = zoom_pan.pos2_area_to_screen(self.location);
@@ -139,7 +115,7 @@ impl<N: NodeData> Node<N> {
                 FrameWithHeader::new(&self.caption)
                     .frame(Frame::window(ui.style()).shadow(Shadow::default()).inner_margin(margin))
                     .show(ui, |ui| {
-                        self.data.show(ui, operations);
+                        self.data.show(ui);
 
                         let mut port_infos = Vec::<(InputOutputId, f32)>::new();
                         let port_top = ui.min_rect().bottom();
@@ -148,24 +124,32 @@ impl<N: NodeData> Node<N> {
                             ui.vertical(|ui| {
                                 let mut height_before = port_top;
                                 for (idx, input) in self.inputs.iter().enumerate() {
-                                    input.show(ui);
-                                    let height_after = ui.min_rect().bottom();
-                                    let y = (height_after + height_before) / 2.;
-                                    height_before = height_after;
-                                    let id = InputId::new(self.node_id, input.type_id, idx);
-                                    port_infos.push((id.into(), y));
+                                    if let Some(style) = type_info.get(input.type_id) {
+                                        input.show(ui, style);
+                                        let height_after = ui.min_rect().bottom();
+                                        let y = (height_after + height_before) / 2.;
+                                        height_before = height_after;
+                                        let id = InputId::new(self.id, input.type_id, idx);
+                                        port_infos.push((id.into(), y));
+                                    } else {
+                                        log::warn!("Skipping input port, style for {:?} not found", input.type_id);
+                                    }
                                 }
                             });
                             // outputs
                             ui.vertical(|ui| {
                                 let mut height_before = port_top;
                                 for (idx, output) in self.outputs.iter().enumerate() {
-                                    output.show(ui);
-                                    let height_after = ui.min_rect().bottom();
-                                    let y = (height_after + height_before) / 2.;
-                                    height_before = height_after;
-                                    let id = OutputId::new(self.node_id, output.type_id, idx);
-                                    port_infos.push((id.into(), y));
+                                    if let Some(style) = type_info.get(output.type_id) {
+                                        output.show(ui, style);
+                                        let height_after = ui.min_rect().bottom();
+                                        let y = (height_after + height_before) / 2.;
+                                        height_before = height_after;
+                                        let id = OutputId::new(self.id, output.type_id, idx);
+                                        port_infos.push((id.into(), y));
+                                    } else {
+                                        log::warn!("Skipping output port, style for {:?} not found", output.type_id);
+                                    }
                                 }
                             });
                         });
@@ -184,11 +168,14 @@ impl<N: NodeData> Node<N> {
                                 InputOutputId::Input(_) => pos2(port_rect.left(), y),
                                 InputOutputId::Output(_) => pos2(port_rect.right(), y),
                             };
+                            let style = type_info
+                                .get(port_id.type_id())
+                                .expect("Port shall be drown only with known types");
                             self.draw_port(
                                 painter,
                                 zoom_pan,
                                 port_visual,
-                                graph,
+                                style,
                                 port_id,
                                 port_pos,
                                 pointer_pos,
@@ -199,10 +186,10 @@ impl<N: NodeData> Node<N> {
 
                 // increment the node to include the ports
                 /*ui.painter().rect(
-                    node_rect,
+                    node_rect,                    
                     0.,
                     egui::Color32::TRANSPARENT,
-                    Stroke::new(1., egui::Color32::RED),
+                    egui::Stroke::new(1., egui::Color32::YELLOW),
                 );*/
                 ui.expand_to_include_rect(node_rect);
             })
@@ -220,11 +207,37 @@ impl<N: NodeData> Node<N> {
         }
 
         if node_state.dragged && response.drag_delta() != Vec2::ZERO {
-            let new_loc = self.location + zoom_pan.vec2_screen_to_area(response.drag_delta());
-            operations.push(GraphOperation::SetNodeLocation(self.node_id, new_loc));
+            let new_location = self.location + zoom_pan.vec2_screen_to_area(response.drag_delta());
+            self.data.on_moved(new_location);
+            self.location = new_location;
         }
 
         node_state.clone().store(ui, id);
         node_state
+    }
+}
+
+#[derive(Clone)]
+pub(in crate::node_graph) struct NodeState {
+    /// node drag was started in this frame
+    pub drag_started: bool,
+    /// this node is dragged
+    pub dragged: bool,
+}
+
+impl NodeState {
+    fn load(ui: &mut Ui, id: Id) -> Option<NodeState> {
+        ui.data().get_temp(id)
+    }
+
+    fn store(self, ui: &mut Ui, id: Id) {
+        ui.data().insert_temp(id, self);
+    }
+
+    fn new() -> Self {
+        Self {
+            drag_started: false,
+            dragged: false,
+        }
     }
 }

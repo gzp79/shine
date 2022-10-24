@@ -18,6 +18,7 @@ thiserror = "1.0"
 slotmap = "1.0"
 
 egui = "0.19"
+emath = "0.19"
 egui_extras = "0.19"
 eframe = "0.19"
 

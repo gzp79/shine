@@ -1,41 +1,54 @@
 use crate::node_graph::{
-    Connection, ConnectionId, ContextMenuId, InputId, Node, NodeData, NodeId, OutputId, PortType, PortTypeId,
+    Connection, ConnectionData, ConnectionId, InputId, Node, NodeData, NodeId, OutputId, PortType, PortTypeId,
 };
-use egui::Pos2;
 use slotmap::SlotMap;
 
-/// Update actions on the graph
-#[derive(Clone, Debug)]
-pub enum GraphOperation {
-    ContextMenu(Pos2, ContextMenuId),
-    SetNodeLocation(NodeId, Pos2),
-    Connect(InputId, OutputId),
+pub trait GraphData: Clone + Send + Sync + 'static {
+    type NodeData: NodeData;
+    type ConnectionData: ConnectionData;
+
+    fn create_connection_data(&mut self, input: InputId, output: OutputId) -> Option<Self::ConnectionData>;
 }
 
 /// The node graph.
-pub struct Graph<N>
+pub struct Graph<G>
 where
-    N: NodeData,
+    G: GraphData,
 {
     pub types: SlotMap<PortTypeId, PortType>,
-    pub nodes: SlotMap<NodeId, Node<N>>,
-    pub connections: SlotMap<ConnectionId, Connection>,
+    pub nodes: SlotMap<NodeId, Node<G::NodeData>>,
+    pub connections: SlotMap<ConnectionId, Connection<G::ConnectionData>>,
+    pub data: G,
 }
 
-impl<N> Default for Graph<N>
+impl<G> Default for Graph<G>
 where
-    N: NodeData,
+    G: Default + GraphData,
 {
     fn default() -> Self {
         Self {
             types: SlotMap::default(),
             nodes: SlotMap::default(),
             connections: SlotMap::default(),
+            data: G::default(),
         }
     }
 }
 
-impl<N: NodeData> Graph<N> {
+impl<G> Graph<G>
+where
+    G: GraphData,
+{
+    /// Create a new graph with the given user data
+    pub fn new_with_data(data: G) -> Self {
+        Self {
+            types: SlotMap::default(),
+            nodes: SlotMap::default(),
+            connections: SlotMap::default(),
+            data,
+        }
+    }
+
     /// Create a new port-type.
     pub fn add_type(&mut self, port: PortType) -> PortTypeId {
         self.types.insert(port)
@@ -49,7 +62,7 @@ impl<N: NodeData> Graph<N> {
     /// Add a new node to the graph with the given builder.
     pub fn add_node<F>(&mut self, node: F) -> NodeId
     where
-        F: FnOnce(NodeId) -> Node<N>,
+        F: FnOnce(NodeId) -> Node<G::NodeData>,
     {
         self.nodes.insert_with_key(node)
     }
@@ -57,7 +70,7 @@ impl<N: NodeData> Graph<N> {
     /// Add a new connection to the graph with the given builder
     pub fn add_connection<F>(&mut self, connection: F) -> ConnectionId
     where
-        F: FnOnce(ConnectionId) -> Connection,
+        F: FnOnce(ConnectionId) -> Connection<G::ConnectionData>,
     {
         self.connections.insert_with_key(connection)
     }

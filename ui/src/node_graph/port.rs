@@ -1,4 +1,4 @@
-use crate::node_graph::{NodeId, PortTypeId};
+use crate::node_graph::{NodeId, PortType, PortTypeId};
 use egui::Ui;
 
 /// Input port
@@ -15,7 +15,7 @@ impl Input {
         }
     }
 
-    pub(in crate::node_graph) fn show(&self, ui: &mut Ui) {
+    pub(in crate::node_graph) fn show(&self, ui: &mut Ui, _style: &PortType) {
         ui.label(&self.name);
     }
 }
@@ -55,7 +55,7 @@ impl Output {
         }
     }
 
-    pub(in crate::node_graph) fn show(&self, ui: &mut Ui) -> f32 {
+    pub(in crate::node_graph) fn show(&self, ui: &mut Ui, _style: &PortType) -> f32 {
         let height_before = ui.min_rect().bottom();
         ui.label(&self.name);
         let height_after = ui.min_rect().bottom();

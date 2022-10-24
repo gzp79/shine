@@ -1,21 +1,52 @@
 use crate::node_graph::{
-    utils::draw_connection, EditorMode, Graph, GraphOperation, InputId, InputOutputId, NodeData, OutputId,
-    PortSelection, PortViewState, ZoomPanState,
+    utils::draw_connection, Graph, GraphData, InputId, InputOutputId, OutputId, PortSelection, PortViewState,
+    ZoomPanState,
 };
 use egui::{Id, Pos2, Stroke, Ui};
 
+use super::ConnectionData;
+
+pub(in crate::node_graph) enum ConnectionResult<C>
+where
+    C: ConnectionData,
+{
+    Pending,
+    Completed(Option<(InputId, OutputId, C)>),
+}
+
 /// Edit connection between ports
-#[derive(Default, Clone, Debug)]
-pub(in crate::node_graph) struct ConnectionEditState {
+#[derive(Clone, Debug)]
+pub(in crate::node_graph) struct ConnectionEditState<C>
+where
+    C: ConnectionData,
+{
     start: Option<InputOutputId>,
     start_pos: Option<Pos2>,
     end: Option<InputOutputId>,
     end_pos: Option<Pos2>,
-    valid: bool,
+    connection_data: Option<C>,
 }
 
-impl ConnectionEditState {
-    pub fn load(ui: &mut Ui, id: Id) -> Option<ConnectionEditState> {
+impl<C> Default for ConnectionEditState<C>
+where
+    C: ConnectionData,
+{
+    fn default() -> Self {
+        Self {
+            start: None,
+            start_pos: None,
+            end: None,
+            end_pos: None,
+            connection_data: None,
+        }
+    }
+}
+
+impl<C> ConnectionEditState<C>
+where
+    C: ConnectionData,
+{
+    pub fn load(ui: &mut Ui, id: Id) -> Option<Self> {
         ui.data().get_temp(id)
     }
 
@@ -24,7 +55,7 @@ impl ConnectionEditState {
     }
 
     pub fn prepare(&self, port_visual: &mut PortViewState) {
-        let selection = if self.valid {
+        let selection = if self.connection_data.is_some() {
             PortSelection::Hover
         } else {
             PortSelection::Error
@@ -39,7 +70,7 @@ impl ConnectionEditState {
         }
     }
 
-    fn draw<N: NodeData>(&self, ui: &mut Ui, zoom_pan: &ZoomPanState, graph: &Graph<N>) {
+    fn draw<G: GraphData>(&self, ui: &mut Ui, zoom_pan: &ZoomPanState, graph: &Graph<G>) {
         zoom_pan.show_clipped(ui, |ui| {
             if let (Some(start), Some(start_pos), Some(end_pos)) = (&self.start, self.start_pos, self.end_pos) {
                 let (start_pos, end_pos) = if start.is_input() {
@@ -49,7 +80,7 @@ impl ConnectionEditState {
                 };
 
                 let style = graph.get_type(start.type_id());
-                let color = if self.valid {
+                let color = if self.connection_data.is_some() {
                     style.hover_color
                 } else {
                     style.error_color
@@ -67,17 +98,15 @@ impl ConnectionEditState {
         })
     }
 
-    pub fn update<N, F>(
+    pub fn update<G>(
         &mut self,
         ui: &mut Ui,
         zoom_pan: &ZoomPanState,
         port_visual: &PortViewState,
-        graph: &Graph<N>,
-        validate: F,
-    ) -> (EditorMode, Option<GraphOperation>)
+        graph: &mut Graph<G>,
+    ) -> ConnectionResult<G::ConnectionData>
     where
-        N: NodeData,
-        F: FnOnce(InputId, OutputId) -> bool,
+        G: GraphData<ConnectionData = C>,
     {
         let pointer_pos = ui.ctx().pointer_latest_pos().unwrap_or(Pos2::ZERO);
         let pointer_down = ui.input().pointer.any_down();
@@ -90,9 +119,9 @@ impl ConnectionEditState {
             self.start_pos = Some(pos);
             self.end = None;
             self.end_pos = None;
-            self.valid = false;
+            self.connection_data = None;
 
-            (EditorMode::EditConnection, None)
+            ConnectionResult::Pending
         } else {
             // update a pending connection
             self.start_pos = port_visual.get_screen_pos(self.start.unwrap());
@@ -105,32 +134,32 @@ impl ConnectionEditState {
                 self.end_pos = Some(pos);
 
                 if update_validity {
-                    self.valid = match (self.start.unwrap(), self.end.unwrap()) {
+                    self.connection_data = match (self.start.unwrap(), self.end.unwrap()) {
                         (InputOutputId::Input(input_id), InputOutputId::Output(output_id)) => {
-                            (validate)(input_id, output_id)
+                            graph.data.create_connection_data(input_id, output_id)
                         }
                         (InputOutputId::Output(output_id), InputOutputId::Input(input_id)) => {
-                            (validate)(input_id, output_id)
+                            graph.data.create_connection_data(input_id, output_id)
                         }
-                        _ => false,
+                        _ => None,
                     };
                 }
             } else {
                 self.end = None;
                 self.end_pos = Some(pointer_pos);
-                self.valid = false;
+                self.connection_data = None;
             }
 
             self.draw(ui, zoom_pan, graph);
 
             if !pointer_down {
-                let operation = if self.valid {
+                let operation = if let Some(connection_data) = self.connection_data.take() {
                     match (self.start.unwrap(), self.end.unwrap()) {
                         (InputOutputId::Input(input_id), InputOutputId::Output(output_id)) => {
-                            Some(GraphOperation::Connect(input_id, output_id))
+                            Some((input_id, output_id, connection_data))
                         }
                         (InputOutputId::Output(output_id), InputOutputId::Input(input_id)) => {
-                            Some(GraphOperation::Connect(input_id, output_id))
+                            Some((input_id, output_id, connection_data))
                         }
                         _ => unreachable!(),
                     }
@@ -139,9 +168,9 @@ impl ConnectionEditState {
                 };
 
                 self.cancel();
-                (EditorMode::None, operation)
+                ConnectionResult::Completed(operation)
             } else {
-                (EditorMode::EditConnection, None)
+                ConnectionResult::Pending
             }
         }
     }

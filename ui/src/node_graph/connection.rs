@@ -4,7 +4,12 @@ use shine_core::slotmap::new_key_type;
 
 new_key_type! { pub struct ConnectionId; }
 
-pub trait ConnectionData: Clone + Send + Sync + 'static {}
+pub trait ConnectionData: Clone + Send + Sync + 'static {
+    fn try_connect<G>(graph: &mut Graph<G>, input_id: InputId, output_id: OutputId) -> Option<Self>
+    where
+        Self: Sized,
+        G: GraphData<ConnectionData = Self>;
+}
 
 pub struct Connection<C: ConnectionData> {
     id: ConnectionId,

@@ -124,7 +124,7 @@ impl<N: NodeData> Node<N> {
                             //inputs
                             ui.vertical(|ui| {
                                 let mut height_before = port_top;
-                                for (idx, input) in self.inputs.iter().enumerate() {
+                                for (idx, input) in self.inputs.iter_mut().enumerate() {
                                     let type_id = input.port_type_id();
                                     if let Some(style) = type_info.get(&type_id) {
                                         input.show(ui, style);
@@ -141,7 +141,7 @@ impl<N: NodeData> Node<N> {
                             // outputs
                             ui.vertical(|ui| {
                                 let mut height_before = port_top;
-                                for (idx, output) in self.outputs.iter().enumerate() {
+                                for (idx, output) in self.outputs.iter_mut().enumerate() {
                                     let type_id = output.port_type_id();
                                     if let Some(style) = type_info.get(&type_id) {
                                         output.show(ui, style);

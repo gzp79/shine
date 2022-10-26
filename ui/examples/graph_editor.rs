@@ -1,8 +1,8 @@
-use egui::{CentralPanel, Color32, ComboBox, Id, Pos2, SidePanel};
+use egui::{CentralPanel, Color32, ComboBox, Id, Pos2, SidePanel, Slider, Ui};
 use egui_extras::{Size, StripBuilder};
 use shine_ui::node_graph::{
-    ConnectionData, ContextMenu, ContextMenuData, Graph, GraphData, GraphEdit, Input, InputId, Node, NodeData, Output,
-    OutputId, PortStyle,
+    ConnectionData, ContextMenu, ContextMenuData, Graph, GraphData, GraphEdit, Input, InputData, InputId, Node,
+    NodeData, Output, OutputData, OutputId, PortStyle,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -16,7 +16,19 @@ impl NodeData for MyNodeData {}
 
 #[derive(Clone)]
 struct MyConnectionData;
-impl ConnectionData for MyConnectionData {}
+impl ConnectionData for MyConnectionData {
+    fn try_connect<G>(_graph: &mut Graph<G>, input_id: InputId, output_id: OutputId) -> Option<Self>
+    where
+        Self: Sized,
+        G: GraphData<ConnectionData = Self>,
+    {
+        if input_id.port_type_id() == output_id.port_type_id() {
+            Some(MyConnectionData)
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Default, Clone)]
 struct MyGraphData;
@@ -26,14 +38,6 @@ impl GraphData for MyGraphData {
     type ConnectionData = MyConnectionData;
 
     fn clear(&mut self) {}
-
-    fn create_connection_data(&mut self, input: InputId, output: OutputId) -> Option<Self::ConnectionData> {
-        if input.port_type_id() == output.port_type_id() {
-            Some(MyConnectionData)
-        } else {
-            None
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -63,7 +67,7 @@ impl ContextMenuData for MyContextMenuData {
                         location,
                         MyNodeData,
                         vec![],
-                        vec![Output::<u8>::new("value").into()],
+                        vec![Output::<u8, _>::new("value", ()).into()],
                     )
                 });
             }
@@ -75,7 +79,7 @@ impl ContextMenuData for MyContextMenuData {
                         location,
                         MyNodeData,
                         vec![],
-                        vec![Output::<u16>::new("value").into()],
+                        vec![Output::<u16, _>::new("value", ()).into()],
                     )
                 });
             }
@@ -87,7 +91,13 @@ impl ContextMenuData for MyContextMenuData {
                         location,
                         MyNodeData,
                         vec![],
-                        vec![Output::<u32>::new("value").into()],
+                        vec![Output::<u32, _>::new(
+                            "value",
+                            SampleOutput {
+                                value: "update me".to_string(),
+                            },
+                        )
+                        .into()],
                     )
                 });
             }
@@ -99,11 +109,11 @@ impl ContextMenuData for MyContextMenuData {
                         location,
                         MyNodeData,
                         vec![
-                            Input::<u8>::new("in1").into(),
-                            Input::<u16>::new("in2").into(),
-                            Input::<u32>::new("in3").into(),
+                            Input::<u8, _>::new("in1", SampleInput { value: 10. }).into(),
+                            Input::<u16, _>::new("in2", ()).into(),
+                            Input::<u32, _>::new("in3", ()).into(),
                         ],
-                        vec![Output::<u8>::new("calculated").into()],
+                        vec![Output::<u8, _>::new("calculated", ()).into()],
                     )
                 });
             }
@@ -112,6 +122,26 @@ impl ContextMenuData for MyContextMenuData {
                 graph.connections.clear();
             }
         }
+    }
+}
+
+pub struct SampleInput {
+    value: f32,
+}
+
+impl InputData for SampleInput {
+    fn show(&mut self, ui: &mut Ui, _style: &PortStyle) {
+        ui.add(Slider::new(&mut self.value, 0.0..=100.0).text("percent"));
+    }
+}
+
+pub struct SampleOutput {
+    value: String,
+}
+
+impl OutputData for SampleOutput {
+    fn show(&mut self, ui: &mut Ui, _style: &PortStyle) {
+        ui.text_edit_singleline(&mut self.value);
     }
 }
 

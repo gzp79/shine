@@ -14,21 +14,10 @@ impl PortStyle {
     pub fn new<S: ToString>(name: S) -> Self {
         PortStyle {
             name: name.to_string(),
-            port_size: 7.,
+            port_size: 5.,
             connection_width: 3.,
             color: Color32::WHITE,
             hover_color: Color32::BLUE,
-            error_color: Color32::RED,
-        }
-    }
-
-    pub fn unknown() -> Self {
-        PortStyle {
-            name: "unknown".to_string(),
-            port_size: 7.,
-            connection_width: 3.,
-            color: Color32::RED,
-            hover_color: Color32::RED,
             error_color: Color32::RED,
         }
     }

@@ -1,5 +1,5 @@
 use crate::node_graph::{
-    Connection, ConnectionData, ConnectionId, InputId, Node, NodeData, NodeId, OutputId, PortStyle,
+    Connection, ConnectionData, ConnectionId, InputId, Node, NodeData, NodeId, OutputId, OutputPort, PortStyle,
 };
 use shine_core::slotmap::SlotMap;
 use std::{
@@ -7,12 +7,13 @@ use std::{
     collections::HashMap,
 };
 
+use super::InputPort;
+
 pub trait GraphData: Clone + Send + Sync + 'static {
     type NodeData: NodeData;
     type ConnectionData: ConnectionData;
 
     fn clear(&mut self);
-    fn create_connection_data(&mut self, input: InputId, output: OutputId) -> Option<Self::ConnectionData>;
 }
 
 /// The node graph.
@@ -83,6 +84,20 @@ where
         F: FnOnce(ConnectionId) -> Connection<G::ConnectionData>,
     {
         self.connections.insert_with_key(connection)
+    }
+
+    pub fn get_input(&self, input_id: InputId) -> Option<&dyn InputPort> {
+        self.nodes
+            .get(input_id.node_id())
+            .and_then(|node| node.inputs.get(input_id.port_id()))
+            .map(|input| &**input)
+    }
+
+    pub fn get_output(&self, output_id: OutputId) -> Option<&dyn OutputPort> {
+        self.nodes
+            .get(output_id.node_id())
+            .and_then(|node| node.outputs.get(output_id.port_id()))
+            .map(|output| &**output)
     }
 
     /// Clear the graph, but keeps the allocated memory.

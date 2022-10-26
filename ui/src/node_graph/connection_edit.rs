@@ -140,10 +140,10 @@ where
                 if update_validity {
                     self.connection_data = match (self.start.unwrap(), self.end.unwrap()) {
                         (InputOutputId::Input(input_id), InputOutputId::Output(output_id)) => {
-                            graph.data.create_connection_data(input_id, output_id)
+                            <G::ConnectionData as ConnectionData>::try_connect(graph, input_id, output_id)
                         }
                         (InputOutputId::Output(output_id), InputOutputId::Input(input_id)) => {
-                            graph.data.create_connection_data(input_id, output_id)
+                            <G::ConnectionData as ConnectionData>::try_connect(graph, input_id, output_id)
                         }
                         _ => None,
                     };

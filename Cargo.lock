@@ -1659,6 +1659,8 @@ dependencies = [
  "rand",
  "serde",
  "shine-test",
+ "slotmap",
+ "smallbox",
  "thiserror",
  "tokio",
  "wasm-bindgen-test",
@@ -1697,7 +1699,6 @@ dependencies = [
  "env_logger",
  "log",
  "shine-core",
- "slotmap",
  "thiserror",
 ]
 
@@ -1718,6 +1719,12 @@ checksum = "e1e08e261d0e8f5c43123b7adf3e4ca1690d655377ac93a03b2c9d3e98de1342"
 dependencies = [
  "version_check",
 ]
+
+[[package]]
+name = "smallbox"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4679d6eef28b85020158619fc09769de89e90886c5de7157587d87cb72648faa"
 
 [[package]]
 name = "smallvec"

@@ -64,7 +64,7 @@ where
         let mut dragged_node = None;
 
         for node in self.graph.nodes.values_mut() {
-            let node_state = node.show(ui, zoom_pan, port_visual, &self.graph.types);
+            let node_state = node.show(ui, zoom_pan, port_visual, &self.graph.type_styles);
             if node_state.dragged {
                 dragged_node = Some(node_state);
             }

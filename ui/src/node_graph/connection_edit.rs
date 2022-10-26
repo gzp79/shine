@@ -79,7 +79,11 @@ where
                     (end_pos, start_pos)
                 };
 
-                let style = graph.get_type(start.type_id());
+                let type_id = start.port_type_id();
+                let style = graph
+                    .type_styles
+                    .get(&type_id)
+                    .expect("Connection shall be drown only with known types");
                 let color = if self.connection_data.is_some() {
                     style.hover_color
                 } else {

@@ -1,10 +1,7 @@
 use egui::Color32;
-use slotmap::new_key_type;
-
-new_key_type! { pub struct PortTypeId; }
 
 #[derive(Clone, Debug)]
-pub struct PortType {
+pub struct PortStyle {
     pub name: String,
     pub port_size: f32,
     pub connection_width: f32,
@@ -13,9 +10,9 @@ pub struct PortType {
     pub error_color: Color32,
 }
 
-impl PortType {
+impl PortStyle {
     pub fn new<S: ToString>(name: S) -> Self {
-        PortType {
+        PortStyle {
             name: name.to_string(),
             port_size: 7.,
             connection_width: 3.,
@@ -26,7 +23,7 @@ impl PortType {
     }
 
     pub fn unknown() -> Self {
-        PortType {
+        PortStyle {
             name: "unknown".to_string(),
             port_size: 7.,
             connection_width: 3.,

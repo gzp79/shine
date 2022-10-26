@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::node_graph::{Graph, GraphData, ZoomPanState};
 use egui::{pos2, Id, Pos2, Ui};
-use slotmap::{new_key_type, SlotMap};
+use shine_core::slotmap::{new_key_type, SlotMap};
 
 new_key_type! { pub struct ContextMenuId; }
 

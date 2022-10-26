@@ -1,12 +1,17 @@
 use crate::node_graph::{
-    Connection, ConnectionData, ConnectionId, InputId, Node, NodeData, NodeId, OutputId, PortType, PortTypeId,
+    Connection, ConnectionData, ConnectionId, InputId, Node, NodeData, NodeId, OutputId, PortStyle,
 };
-use slotmap::SlotMap;
+use shine_core::slotmap::SlotMap;
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+};
 
 pub trait GraphData: Clone + Send + Sync + 'static {
     type NodeData: NodeData;
     type ConnectionData: ConnectionData;
 
+    fn clear(&mut self);
     fn create_connection_data(&mut self, input: InputId, output: OutputId) -> Option<Self::ConnectionData>;
 }
 
@@ -15,7 +20,7 @@ pub struct Graph<G>
 where
     G: GraphData,
 {
-    pub types: SlotMap<PortTypeId, PortType>,
+    pub type_styles: HashMap<TypeId, PortStyle>,
     pub nodes: SlotMap<NodeId, Node<G::NodeData>>,
     pub connections: SlotMap<ConnectionId, Connection<G::ConnectionData>>,
     pub data: G,
@@ -27,7 +32,7 @@ where
 {
     fn default() -> Self {
         Self {
-            types: SlotMap::default(),
+            type_styles: HashMap::default(),
             nodes: SlotMap::default(),
             connections: SlotMap::default(),
             data: G::default(),
@@ -42,7 +47,7 @@ where
     /// Create a new graph with the given user data
     pub fn new_with_data(data: G) -> Self {
         Self {
-            types: SlotMap::default(),
+            type_styles: HashMap::default(),
             nodes: SlotMap::default(),
             connections: SlotMap::default(),
             data,
@@ -50,13 +55,9 @@ where
     }
 
     /// Create a new port-type.
-    pub fn add_type(&mut self, port: PortType) -> PortTypeId {
-        self.types.insert(port)
-    }
-
-    /// Get the type corresponding to the id or `PortType::unknown()` in case it is not found
-    pub fn get_type(&self, port_id: PortTypeId) -> PortType {
-        self.types.get(port_id).cloned().unwrap_or_else(PortType::unknown)
+    pub fn set_type_style<T: Any>(&mut self, port: PortStyle) {
+        let ty = TypeId::of::<T>();
+        self.type_styles.insert(ty, port);
     }
 
     /// Add a new node to the graph with the given builder.
@@ -86,8 +87,9 @@ where
 
     /// Clear the graph, but keeps the allocated memory.
     pub fn clear(&mut self) {
-        self.types.clear();
+        self.type_styles.clear();
         self.nodes.clear();
         self.connections.clear();
+        self.data.clear();
     }
 }

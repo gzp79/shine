@@ -15,7 +15,6 @@ name = "graph_editor"
 log = "0.4"
 env_logger = "0.9"
 thiserror = "1.0"
-slotmap = "1.0"
 
 egui = "0.19"
 emath = "0.19"

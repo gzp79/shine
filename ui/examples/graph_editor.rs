@@ -2,7 +2,7 @@ use egui::{CentralPanel, Color32, ComboBox, Id, Pos2, SidePanel};
 use egui_extras::{Size, StripBuilder};
 use shine_ui::node_graph::{
     ConnectionData, ContextMenu, ContextMenuData, Graph, GraphData, GraphEdit, Input, InputId, Node, NodeData, Output,
-    OutputId, PortType, PortTypeId,
+    OutputId, PortStyle,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -19,18 +19,16 @@ struct MyConnectionData;
 impl ConnectionData for MyConnectionData {}
 
 #[derive(Default, Clone)]
-struct MyGraphData {
-    type_u8: PortTypeId,
-    type_u16: PortTypeId,
-    type_u32: PortTypeId,
-}
+struct MyGraphData;
 
 impl GraphData for MyGraphData {
     type NodeData = MyNodeData;
     type ConnectionData = MyConnectionData;
 
+    fn clear(&mut self) {}
+
     fn create_connection_data(&mut self, input: InputId, output: OutputId) -> Option<Self::ConnectionData> {
-        if input.type_id() == output.type_id() {
+        if input.port_type_id() == output.port_type_id() {
             Some(MyConnectionData)
         } else {
             None
@@ -55,19 +53,9 @@ impl ContextMenuData for MyContextMenuData {
     fn on_select(&self, graph: &mut Graph<Self::GraphData>, location: Pos2) {
         match self {
             MyContextMenuData::AddMinimalNode => {
-                graph.add_node(|node_id| {
-                    Node::new(
-                        node_id,
-                        "minimal",
-                        location,
-                        MyNodeData,
-                        vec![],
-                        vec![],
-                    )
-                });
+                graph.add_node(|node_id| Node::new(node_id, "minimal", location, MyNodeData, vec![], vec![]));
             }
             MyContextMenuData::AddU8Node => {
-                let type_u8 = graph.data.type_u8;
                 graph.add_node(|node_id| {
                     Node::new(
                         node_id,
@@ -75,12 +63,11 @@ impl ContextMenuData for MyContextMenuData {
                         location,
                         MyNodeData,
                         vec![],
-                        vec![Output::new("value", type_u8)],
+                        vec![Output::<u8>::new("value").into()],
                     )
                 });
             }
             MyContextMenuData::AddU16Node => {
-                let type_u16 = graph.data.type_u16;
                 graph.add_node(|node_id| {
                     Node::new(
                         node_id,
@@ -88,12 +75,11 @@ impl ContextMenuData for MyContextMenuData {
                         location,
                         MyNodeData,
                         vec![],
-                        vec![Output::new("value", type_u16)],
+                        vec![Output::<u16>::new("value").into()],
                     )
                 });
             }
             MyContextMenuData::AddU32Node => {
-                let type_u32 = graph.data.type_u32;
                 graph.add_node(|node_id| {
                     Node::new(
                         node_id,
@@ -101,14 +87,11 @@ impl ContextMenuData for MyContextMenuData {
                         location,
                         MyNodeData,
                         vec![],
-                        vec![Output::new("value", type_u32)],
+                        vec![Output::<u32>::new("value").into()],
                     )
                 });
             }
             MyContextMenuData::AddComplexNode => {
-                let type_u8 = graph.data.type_u8;
-                let type_u16 = graph.data.type_u16;
-                let type_u32 = graph.data.type_u32;
                 graph.add_node(|node_id| {
                     Node::new(
                         node_id,
@@ -116,12 +99,11 @@ impl ContextMenuData for MyContextMenuData {
                         location,
                         MyNodeData,
                         vec![
-                            Input::new("in1", type_u8),
-                            Input::new("in2", type_u16),
-                            Input::new("in3", type_u32),
-                            Input::new("in4", type_u32),
+                            Input::<u8>::new("in1").into(),
+                            Input::<u16>::new("in2").into(),
+                            Input::<u32>::new("in3").into(),
                         ],
-                        vec![Output::new("zipped", type_u8)],
+                        vec![Output::<u8>::new("calculated").into()],
                     )
                 });
             }
@@ -142,9 +124,9 @@ struct MyApp {
 impl Default for MyApp {
     fn default() -> Self {
         let mut graph = Graph::<MyGraphData>::default();
-        graph.data.type_u8 = graph.add_type(PortType::new("u8").with_color(Color32::KHAKI));
-        graph.data.type_u16 = graph.add_type(PortType::new("u16"));
-        graph.data.type_u32 = graph.add_type(PortType::new("u32"));
+        graph.set_type_style::<u8>(PortStyle::new("u8").with_color(Color32::KHAKI));
+        graph.set_type_style::<u16>(PortStyle::new("u16"));
+        graph.set_type_style::<u32>(PortStyle::new("u32"));
 
         let context_menu = {
             let mut context_menu = ContextMenu::default();
@@ -155,9 +137,10 @@ impl Default for MyApp {
                 .add_item("u8", MyContextMenuData::AddU8Node)
                 .add_item("u16", MyContextMenuData::AddU16Node)
                 .add_item("u32", MyContextMenuData::AddU32Node);
-            builder.add_group("logic")
+            builder
+                .add_group("logic")
                 .add_item("minimal", MyContextMenuData::AddMinimalNode)
-                .add_item("complex", MyContextMenuData::AddComplexNode);                        
+                .add_item("complex", MyContextMenuData::AddComplexNode);
             builder.add_item("clear", MyContextMenuData::ClearGraph);
 
             context_menu

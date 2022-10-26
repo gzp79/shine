@@ -17,6 +17,8 @@ pub mod graph;
 pub use atomic_refcell;
 pub use crossbeam;
 pub use downcast_rs;
+pub use slotmap;
+pub use smallbox;
 
 /// Helper to extend lifetime of a refernece. Genrates highly unsafe code.
 #[macro_export]

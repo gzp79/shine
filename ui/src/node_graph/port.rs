@@ -1,30 +1,75 @@
-use crate::node_graph::{NodeId, PortType, PortTypeId};
+use crate::node_graph::{NodeId, PortStyle};
 use egui::Ui;
+use shine_core::{
+    downcast_rs::{impl_downcast, Downcast},
+    smallbox::{smallbox, space, SmallBox},
+};
+use std::{
+    any::{Any, TypeId},
+    marker::PhantomData,
+};
 
-/// Input port
-pub struct Input {
-    pub name: String,
-    pub type_id: PortTypeId,
+/// Some dummy type for "null" input and output ids.
+struct Void;
+
+pub trait InputPort: 'static + Downcast {
+    fn name(&self) -> &str;
+    fn port_type_id(&self) -> TypeId;
+    fn show(&self, ui: &mut Ui, style: &PortStyle);
+}
+impl_downcast!(InputPort);
+
+pub type BoxedInput = SmallBox<dyn InputPort, space::S32>;
+
+impl<T> From<Input<T>> for BoxedInput
+where
+    T: Any,
+{
+    fn from(input: Input<T>) -> Self {
+        smallbox!(input)
+    }
 }
 
-impl Input {
-    pub fn new<S: ToString>(name: S, type_id: PortTypeId) -> Self {
+/// Input port
+pub struct Input<T: Any> {
+    pub name: String,
+    _ph: PhantomData<T>,
+}
+
+impl<T: Any> Input<T> {
+    pub fn new<S: ToString>(name: S) -> Self {
         Self {
             name: name.to_string(),
-            type_id,
+            _ph: PhantomData,
         }
     }
+}
 
-    pub(in crate::node_graph) fn show(&self, ui: &mut Ui, _style: &PortType) {
+impl<T: Any> InputPort for Input<T> {
+    fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    fn port_type_id(&self) -> TypeId {
+        TypeId::of::<T>()
+    }
+
+    fn show(&self, ui: &mut Ui, _style: &PortStyle) {
         ui.label(&self.name);
     }
 }
 
-#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct InputId(NodeId, PortTypeId, usize);
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct InputId(NodeId, TypeId, usize);
+
+impl Default for InputId {
+    fn default() -> Self {
+        Self(NodeId::default(), TypeId::of::<Void>(), usize::MAX)
+    }
+}
 
 impl InputId {
-    pub fn new(node_id: NodeId, type_id: PortTypeId, signal_id: usize) -> Self {
+    pub(in crate::node_graph) fn new(node_id: NodeId, type_id: TypeId, signal_id: usize) -> Self {
         Self(node_id, type_id, signal_id)
     }
 
@@ -32,7 +77,7 @@ impl InputId {
         self.0
     }
 
-    pub fn type_id(&self) -> PortTypeId {
+    pub fn port_type_id(&self) -> TypeId {
         self.1
     }
 
@@ -41,33 +86,65 @@ impl InputId {
     }
 }
 
-/// Output port
-pub struct Output {
-    pub name: String,
-    pub type_id: PortTypeId,
+pub trait OutputPort: 'static + Downcast {
+    fn name(&self) -> &str;
+    fn port_type_id(&self) -> TypeId;
+    fn show(&self, ui: &mut Ui, style: &PortStyle);
 }
 
-impl Output {
-    pub fn new<S: ToString>(name: S, type_id: PortTypeId) -> Self {
+impl_downcast!(OutputPort);
+
+pub type BoxedOutput = SmallBox<dyn OutputPort, space::S32>;
+
+impl<T> From<Output<T>> for BoxedOutput
+where
+    T: Any,
+{
+    fn from(output: Output<T>) -> Self {
+        smallbox!(output)
+    }
+}
+
+/// Output port
+pub struct Output<T: Any> {
+    pub name: String,
+    _ph: PhantomData<T>,
+}
+
+impl<T: Any> Output<T> {
+    pub fn new<S: ToString>(name: S) -> Self {
         Self {
             name: name.to_string(),
-            type_id,
+            _ph: PhantomData,
         }
-    }
-
-    pub(in crate::node_graph) fn show(&self, ui: &mut Ui, _style: &PortType) -> f32 {
-        let height_before = ui.min_rect().bottom();
-        ui.label(&self.name);
-        let height_after = ui.min_rect().bottom();
-        (height_before + height_after) / 2.
     }
 }
 
-#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct OutputId(NodeId, PortTypeId, usize);
+impl<T: Any> OutputPort for Output<T> {
+    fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    fn port_type_id(&self) -> TypeId {
+        TypeId::of::<T>()
+    }
+
+    fn show(&self, ui: &mut Ui, _style: &PortStyle) {
+        ui.label(&self.name);
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct OutputId(NodeId, TypeId, usize);
+
+impl Default for OutputId {
+    fn default() -> Self {
+        Self(NodeId::default(), TypeId::of::<Void>(), usize::MAX)
+    }
+}
 
 impl OutputId {
-    pub fn new(node_id: NodeId, type_id: PortTypeId, signal_id: usize) -> Self {
+    pub(in crate::node_graph) fn new(node_id: NodeId, type_id: TypeId, signal_id: usize) -> Self {
         Self(node_id, type_id, signal_id)
     }
 
@@ -75,7 +152,7 @@ impl OutputId {
         self.0
     }
 
-    pub fn type_id(&self) -> PortTypeId {
+    pub fn port_type_id(&self) -> TypeId {
         self.1
     }
 
@@ -107,10 +184,10 @@ impl InputOutputId {
         }
     }
 
-    pub fn type_id(&self) -> PortTypeId {
+    pub fn port_type_id(&self) -> TypeId {
         match self {
-            InputOutputId::Input(id) => id.type_id(),
-            InputOutputId::Output(id) => id.type_id(),
+            InputOutputId::Input(id) => id.port_type_id(),
+            InputOutputId::Output(id) => id.port_type_id(),
         }
     }
 }

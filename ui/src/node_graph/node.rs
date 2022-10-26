@@ -1,13 +1,14 @@
 use crate::{
     node_graph::{
-        Input, InputId, InputOutputId, Output, OutputId, PortSelection, PortType, PortTypeId, PortViewState,
+        BoxedInput, BoxedOutput, InputId, InputOutputId, OutputId, PortSelection, PortStyle, PortViewState,
         ZoomPanState,
     },
     utils::{FrameWithHeader, Scale},
 };
 use eframe::epaint::Shadow;
 use egui::{pos2, vec2, Area, Frame, Id, Order, Painter, Pos2, Rect, Stroke, Ui, Vec2};
-use slotmap::{new_key_type, SlotMap};
+use shine_core::slotmap::new_key_type;
+use std::{any::TypeId, collections::HashMap};
 
 new_key_type! { pub struct NodeId; }
 
@@ -22,8 +23,8 @@ pub struct Node<N: NodeData> {
     id: NodeId,
     pub caption: String,
     pub data: N,
-    pub inputs: Vec<Input>,
-    pub outputs: Vec<Output>,
+    pub inputs: Vec<BoxedInput>,
+    pub outputs: Vec<BoxedOutput>,
     pub location: Pos2,
 }
 
@@ -33,8 +34,8 @@ impl<N: NodeData> Node<N> {
         caption: S,
         location: Pos2,
         data: N,
-        inputs: Vec<Input>,
-        outputs: Vec<Output>,
+        inputs: Vec<BoxedInput>,
+        outputs: Vec<BoxedOutput>,
     ) -> Self {
         Self {
             id: node_id,
@@ -56,7 +57,7 @@ impl<N: NodeData> Node<N> {
         painter: &Painter,
         zoom_pan: &ZoomPanState,
         port_visual: &mut PortViewState,
-        style: &PortType,
+        style: &PortStyle,
         port_id: InputOutputId,
         port_pos: Pos2,
         pointer_pos: Option<Pos2>,
@@ -93,7 +94,7 @@ impl<N: NodeData> Node<N> {
         ui: &mut Ui,
         zoom_pan: &ZoomPanState,
         port_visual: &mut PortViewState,
-        type_info: &SlotMap<PortTypeId, PortType>,
+        type_info: &HashMap<TypeId, PortStyle>,
     ) -> NodeState {
         let id = zoom_pan.child_id(self.id);
 
@@ -124,15 +125,16 @@ impl<N: NodeData> Node<N> {
                             ui.vertical(|ui| {
                                 let mut height_before = port_top;
                                 for (idx, input) in self.inputs.iter().enumerate() {
-                                    if let Some(style) = type_info.get(input.type_id) {
+                                    let type_id = input.port_type_id();
+                                    if let Some(style) = type_info.get(&type_id) {
                                         input.show(ui, style);
                                         let height_after = ui.min_rect().bottom();
                                         let y = (height_after + height_before) / 2.;
                                         height_before = height_after;
-                                        let id = InputId::new(self.id, input.type_id, idx);
+                                        let id = InputId::new(self.id, type_id, idx);
                                         port_infos.push((id.into(), y));
                                     } else {
-                                        log::warn!("Skipping input port, style for {:?} not found", input.type_id);
+                                        log::warn!("Skipping input port, style for {:?} not found", type_id);
                                     }
                                 }
                             });
@@ -140,15 +142,16 @@ impl<N: NodeData> Node<N> {
                             ui.vertical(|ui| {
                                 let mut height_before = port_top;
                                 for (idx, output) in self.outputs.iter().enumerate() {
-                                    if let Some(style) = type_info.get(output.type_id) {
+                                    let type_id = output.port_type_id();
+                                    if let Some(style) = type_info.get(&type_id) {
                                         output.show(ui, style);
                                         let height_after = ui.min_rect().bottom();
                                         let y = (height_after + height_before) / 2.;
                                         height_before = height_after;
-                                        let id = OutputId::new(self.id, output.type_id, idx);
+                                        let id = OutputId::new(self.id, type_id, idx);
                                         port_infos.push((id.into(), y));
                                     } else {
-                                        log::warn!("Skipping output port, style for {:?} not found", output.type_id);
+                                        log::warn!("Skipping output port, style for {:?} not found", type_id);
                                     }
                                 }
                             });
@@ -169,7 +172,7 @@ impl<N: NodeData> Node<N> {
                                 InputOutputId::Output(_) => pos2(port_rect.right(), y),
                             };
                             let style = type_info
-                                .get(port_id.type_id())
+                                .get(&port_id.port_type_id())
                                 .expect("Port shall be drown only with known types");
                             self.draw_port(
                                 painter,
@@ -186,7 +189,7 @@ impl<N: NodeData> Node<N> {
 
                 // increment the node to include the ports
                 /*ui.painter().rect(
-                    node_rect,                    
+                    node_rect,
                     0.,
                     egui::Color32::TRANSPARENT,
                     egui::Stroke::new(1., egui::Color32::YELLOW),

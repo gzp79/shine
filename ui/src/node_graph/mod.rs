@@ -1,7 +1,7 @@
 mod utils;
 
-mod port_type;
-pub use self::port_type::*;
+mod port_style;
+pub use self::port_style::*;
 mod port;
 pub use self::port::*;
 mod port_visual;

@@ -1,5 +1,5 @@
 use crate::node_graph::{
-    Connection, ConnectionData, ConnectionId, InputId, Node, NodeData, NodeId, OutputId, OutputPort, PortStyle,
+    Connection, ConnectionData, ConnectionId, InputId, Node, NodeId, OutputId, OutputPort, PortStyle,
 };
 use shine_core::slotmap::SlotMap;
 use std::{
@@ -10,7 +10,6 @@ use std::{
 use super::InputPort;
 
 pub trait GraphData: Clone + Send + Sync + 'static {
-    type NodeData: NodeData;
     type ConnectionData: ConnectionData;
 
     fn clear(&mut self);
@@ -22,7 +21,7 @@ where
     G: GraphData,
 {
     pub type_styles: HashMap<TypeId, PortStyle>,
-    pub nodes: SlotMap<NodeId, Node<G::NodeData>>,
+    pub nodes: SlotMap<NodeId, Node>,
     pub connections: SlotMap<ConnectionId, Connection<G::ConnectionData>>,
     pub data: G,
 }
@@ -64,7 +63,7 @@ where
     /// Add a new node to the graph with the given builder.
     pub fn add_node<F>(&mut self, node: F) -> NodeId
     where
-        F: FnOnce(NodeId) -> Node<G::NodeData>,
+        F: FnOnce(NodeId) -> Node,
     {
         self.nodes.insert_with_key(node)
     }

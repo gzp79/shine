@@ -7,48 +7,69 @@ use crate::{
 };
 use eframe::epaint::Shadow;
 use egui::{pos2, vec2, Area, Frame, Id, Order, Painter, Pos2, Rect, Stroke, Ui, Vec2};
-use shine_core::slotmap::new_key_type;
+use shine_core::{
+    downcast_rs::{impl_downcast, Downcast},
+    slotmap::new_key_type,
+    smallbox::{smallbox, space, SmallBox},
+};
 use std::{any::TypeId, collections::HashMap};
 
 new_key_type! { pub struct NodeId; }
 
-pub trait NodeData: Clone + Send + Sync + 'static {
+pub trait NodeData: 'static + Downcast + Send + Sync {
     fn show(&mut self, _ui: &mut Ui) {}
     fn on_moved(&mut self, _new_location: Pos2) {}
 }
+impl_downcast!(NodeData);
 
 impl NodeData for () {}
 
-pub struct Node<N: NodeData> {
+type BoxedNodeData = SmallBox<dyn NodeData, space::S32>;
+
+pub struct Node {
     id: NodeId,
     pub caption: String,
-    pub data: N,
+    pub location: Pos2,
     pub inputs: Vec<BoxedInput>,
     pub outputs: Vec<BoxedOutput>,
-    pub location: Pos2,
+    data: BoxedNodeData,
 }
 
-impl<N: NodeData> Node<N> {
-    pub fn new<S: ToString>(
+impl Node {
+    pub fn new<S: ToString, N: NodeData>(
         node_id: NodeId,
         caption: S,
         location: Pos2,
-        data: N,
         inputs: Vec<BoxedInput>,
         outputs: Vec<BoxedOutput>,
+        data: N,
     ) -> Self {
         Self {
             id: node_id,
             caption: caption.to_string(),
-            data,
             inputs,
             outputs,
             location,
+            data: smallbox!(data),
         }
     }
 
     pub fn id(&self) -> NodeId {
         self.id
+    }
+
+    pub fn data(&self) -> &dyn NodeData {
+        &*self.data
+    }
+
+    pub fn data_as<T: NodeData>(&self) -> &T {
+        let data = &*self.data;
+        data.downcast_ref::<T>().unwrap()
+    }
+
+    pub fn data_mut_as<T: NodeData>(&mut self) -> &mut T {
+        let data = &mut *self.data;
+        data.downcast_mut::<T>().unwrap()
     }
 
     #[allow(clippy::too_many_arguments)]

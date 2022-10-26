@@ -10,9 +10,6 @@ enum SideTool {
     Memory,
     Settings,
 }
-#[derive(Clone)]
-struct MyNodeData;
-impl NodeData for MyNodeData {}
 
 #[derive(Clone)]
 struct MyConnectionData;
@@ -34,7 +31,6 @@ impl ConnectionData for MyConnectionData {
 struct MyGraphData;
 
 impl GraphData for MyGraphData {
-    type NodeData = MyNodeData;
     type ConnectionData = MyConnectionData;
 
     fn clear(&mut self) {}
@@ -57,7 +53,7 @@ impl ContextMenuData for MyContextMenuData {
     fn on_select(&self, graph: &mut Graph<Self::GraphData>, location: Pos2) {
         match self {
             MyContextMenuData::AddMinimalNode => {
-                graph.add_node(|node_id| Node::new(node_id, "minimal", location, MyNodeData, vec![], vec![]));
+                graph.add_node(|node_id| Node::new(node_id, "minimal", location, vec![], vec![], ()));
             }
             MyContextMenuData::AddU8Node => {
                 graph.add_node(|node_id| {
@@ -65,9 +61,9 @@ impl ContextMenuData for MyContextMenuData {
                         node_id,
                         "u8",
                         location,
-                        MyNodeData,
                         vec![],
                         vec![Output::<u8, _>::new("value", ()).into()],
+                        (),
                     )
                 });
             }
@@ -77,9 +73,11 @@ impl ContextMenuData for MyContextMenuData {
                         node_id,
                         "u16",
                         location,
-                        MyNodeData,
                         vec![],
                         vec![Output::<u16, _>::new("value", ()).into()],
+                        SampleNodeData {
+                            value: "edit my node data".to_string(),
+                        },
                     )
                 });
             }
@@ -89,7 +87,6 @@ impl ContextMenuData for MyContextMenuData {
                         node_id,
                         "u32",
                         location,
-                        MyNodeData,
                         vec![],
                         vec![Output::<u32, _>::new(
                             "value",
@@ -98,6 +95,7 @@ impl ContextMenuData for MyContextMenuData {
                             },
                         )
                         .into()],
+                        (),
                     )
                 });
             }
@@ -107,13 +105,13 @@ impl ContextMenuData for MyContextMenuData {
                         node_id,
                         "complex",
                         location,
-                        MyNodeData,
                         vec![
                             Input::<u8, _>::new("in1", SampleInput { value: 10. }).into(),
                             Input::<u16, _>::new("in2", ()).into(),
                             Input::<u32, _>::new("in3", ()).into(),
                         ],
                         vec![Output::<u8, _>::new("calculated", ()).into()],
+                        (),
                     )
                 });
             }
@@ -141,6 +139,16 @@ pub struct SampleOutput {
 
 impl OutputData for SampleOutput {
     fn show(&mut self, ui: &mut Ui, _style: &PortStyle) {
+        ui.text_edit_singleline(&mut self.value);
+    }
+}
+
+pub struct SampleNodeData {
+    value: String,
+}
+
+impl NodeData for SampleNodeData {
+    fn show(&mut self, ui: &mut Ui) {
         ui.text_edit_singleline(&mut self.value);
     }
 }

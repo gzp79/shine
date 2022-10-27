@@ -1,3 +1,8 @@
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+};
+
 use egui::Color32;
 
 #[derive(Clone, Debug)]
@@ -36,5 +41,36 @@ impl PortStyle {
 
     pub fn with_error_color(self, error_color: Color32) -> Self {
         Self { error_color, ..self }
+    }
+}
+
+#[derive(Default)]
+pub struct PortStyles {
+    styles: HashMap<TypeId, PortStyle>,
+}
+
+impl PortStyles {
+    pub fn set<T: Any>(&mut self, port: PortStyle) {
+        let ty = TypeId::of::<T>();
+        self.styles.insert(ty, port);
+    }
+
+    pub fn remove<T: Any>(&mut self) {
+        let ty = TypeId::of::<T>();
+        self.styles.remove(&ty);
+    }
+
+    pub fn get<T: Any>(&self) -> Option<&PortStyle> {
+        let ty = TypeId::of::<T>();
+        self.styles.get(&ty)
+    }
+
+    pub fn get_mut<T: Any>(&mut self) -> Option<&mut PortStyle> {
+        let ty = TypeId::of::<T>();
+        self.styles.get_mut(&ty)
+    }
+
+    pub fn find(&self, ty: TypeId) -> Option<&PortStyle> {
+        self.styles.get(&ty)
     }
 }

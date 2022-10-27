@@ -21,7 +21,7 @@ impl_downcast!(InputPort);
 
 pub type BoxedInput = SmallBox<dyn InputPort, space::S32>;
 
-pub trait InputData : 'static + Send +Sync {
+pub trait InputData: 'static + Send + Sync {
     fn show(&mut self, ui: &mut Ui, style: &PortStyle);
 }
 
@@ -30,13 +30,21 @@ impl InputData for () {
 }
 
 /// Input port
-pub struct Input<T, I = ()> where T: Any, I: InputData {
+pub struct Input<T, I = ()>
+where
+    T: Any,
+    I: InputData,
+{
     pub name: String,
     pub data: I,
     _ph: PhantomData<T>,
 }
 
-impl<T, I> Input<T, I> where T: Any, I: InputData {
+impl<T, I> Input<T, I>
+where
+    T: Any,
+    I: InputData,
+{
     pub fn new<S: ToString>(name: S, data: I) -> Self {
         Self {
             name: name.to_string(),
@@ -46,7 +54,11 @@ impl<T, I> Input<T, I> where T: Any, I: InputData {
     }
 }
 
-impl<T, I> InputPort for Input<T, I> where T: Any, I: InputData {
+impl<T, I> InputPort for Input<T, I>
+where
+    T: Any,
+    I: InputData,
+{
     fn name(&self) -> &str {
         self.name.as_str()
     }
@@ -64,7 +76,7 @@ impl<T, I> InputPort for Input<T, I> where T: Any, I: InputData {
 impl<T, I> From<Input<T, I>> for BoxedInput
 where
     T: Any,
-    I: InputData
+    I: InputData,
 {
     fn from(input: Input<T, I>) -> Self {
         smallbox!(input)
@@ -108,7 +120,7 @@ impl_downcast!(OutputPort);
 
 pub type BoxedOutput = SmallBox<dyn OutputPort, space::S32>;
 
-pub trait OutputData : 'static + Send + Sync {
+pub trait OutputData: 'static + Send + Sync {
     fn show(&mut self, ui: &mut Ui, style: &PortStyle);
 }
 
@@ -129,7 +141,8 @@ where
 
 impl<T, O> Output<T, O>
 where
-    T: Any, O: OutputData
+    T: Any,
+    O: OutputData,
 {
     pub fn new<S: ToString>(name: S, data: O) -> Self {
         Self {
@@ -143,7 +156,7 @@ where
 impl<T, O> OutputPort for Output<T, O>
 where
     T: Any,
-    O: OutputData
+    O: OutputData,
 {
     fn name(&self) -> &str {
         self.name.as_str()
@@ -168,7 +181,6 @@ where
         smallbox!(output)
     }
 }
-
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct OutputId(NodeId, TypeId, usize);

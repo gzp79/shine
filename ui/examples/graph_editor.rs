@@ -1,39 +1,14 @@
 use egui::{CentralPanel, Color32, ComboBox, Id, Pos2, SidePanel, Slider, Ui};
 use egui_extras::{Size, StripBuilder};
 use shine_ui::node_graph::{
-    ConnectionData, ContextMenu, ContextMenuData, Graph, GraphData, GraphEdit, Input, InputData, InputId, Node,
-    NodeData, Output, OutputData, OutputId, PortStyle,
+    Connection, ConnectionData, ContextMenu, ContextMenuData, Graph, GraphEdit, Input, InputData, InputId, Node,
+    NodeData, Output, OutputData, OutputId, PortStyle, PortStyles, Validator,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SideTool {
     Memory,
     Settings,
-}
-
-#[derive(Clone)]
-struct MyConnectionData;
-impl ConnectionData for MyConnectionData {
-    fn try_connect<G>(_graph: &mut Graph<G>, input_id: InputId, output_id: OutputId) -> Option<Self>
-    where
-        Self: Sized,
-        G: GraphData<ConnectionData = Self>,
-    {
-        if input_id.port_type_id() == output_id.port_type_id() {
-            Some(MyConnectionData)
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Default, Clone)]
-struct MyGraphData;
-
-impl GraphData for MyGraphData {
-    type ConnectionData = MyConnectionData;
-
-    fn clear(&mut self) {}
 }
 
 #[derive(Clone)]
@@ -48,9 +23,7 @@ enum MyContextMenuData {
 }
 
 impl ContextMenuData for MyContextMenuData {
-    type GraphData = MyGraphData;
-
-    fn on_select(&self, graph: &mut Graph<Self::GraphData>, location: Pos2) {
+    fn on_select(&self, graph: &mut Graph, location: Pos2) {
         match self {
             MyContextMenuData::AddMinimalNode => {
                 graph.add_node(|node_id| Node::new(node_id, "minimal", location, vec![], vec![], ()));
@@ -116,8 +89,7 @@ impl ContextMenuData for MyContextMenuData {
                 });
             }
             MyContextMenuData::ClearGraph => {
-                graph.nodes.clear();
-                graph.connections.clear();
+                graph.clear();
             }
         }
     }
@@ -153,18 +125,41 @@ impl NodeData for SampleNodeData {
     }
 }
 
+pub struct SampleConnectionData {}
+impl ConnectionData for SampleConnectionData {}
+
+pub struct MyGraphValidator;
+
+impl Validator for MyGraphValidator {
+    fn try_create_connection(&self, _graph: &Graph, input_id: InputId, output_id: OutputId) -> Option<Connection> {
+        if input_id.port_type_id() == output_id.port_type_id() {
+            Some(Connection::new(
+                input_id,
+                output_id,
+                SampleConnectionData {},
+            ))
+        } else {
+            None
+        }
+    }
+}
+
 struct MyApp {
     tool: SideTool,
-    graph: Graph<MyGraphData>,
+    graph: Graph,
     context_menu: ContextMenu<MyContextMenuData>,
 }
 
 impl Default for MyApp {
     fn default() -> Self {
-        let mut graph = Graph::<MyGraphData>::default();
-        graph.set_type_style::<u8>(PortStyle::new("u8").with_color(Color32::KHAKI));
-        graph.set_type_style::<u16>(PortStyle::new("u16"));
-        graph.set_type_style::<u32>(PortStyle::new("u32"));
+        let mut style = PortStyles::default();
+        style.set::<u8>(PortStyle::new("u8").with_color(Color32::KHAKI));
+        style.set::<u16>(PortStyle::new("u16"));
+        style.set::<u32>(PortStyle::new("u32"));
+
+        let mut graph = Graph::default();
+        graph.set_validator(MyGraphValidator);
+        graph.set_port_styles(style);
 
         let context_menu = {
             let mut context_menu = ContextMenu::default();

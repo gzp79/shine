@@ -1,15 +1,13 @@
 use std::marker::PhantomData;
 
-use crate::node_graph::{Graph, GraphData, ZoomPanState};
+use crate::node_graph::{Graph, ZoomPanState};
 use egui::{pos2, Id, Pos2, Ui};
 use shine_core::slotmap::{new_key_type, SlotMap};
 
 new_key_type! { pub struct ContextMenuId; }
 
-pub trait ContextMenuData: Clone + Send + Sync + 'static {
-    type GraphData: GraphData;
-
-    fn on_select(&self, graph: &mut Graph<Self::GraphData>, location: Pos2);
+pub trait ContextMenuData: 'static + Clone + Send + Sync {
+    fn on_select(&self, graph: &mut Graph, location: Pos2);
 }
 
 pub struct ContextMenuItem<M: ContextMenuData> {
@@ -159,7 +157,7 @@ where
         menu_items: &SlotMap<ContextMenuId, ContextMenuItem<M>>,
         current: &ContextMenuKind,
         ui: &mut Ui,
-        graph: &mut Graph<M::GraphData>,
+        graph: &mut Graph,
     ) {
         match current {
             ContextMenuKind::SubMenu { name, items } => {
@@ -184,7 +182,7 @@ where
         menu_items: &SlotMap<ContextMenuId, ContextMenuItem<M>>,
         filter: &[&str],
         ui: &mut Ui,
-        graph: &mut Graph<M::GraphData>,
+        graph: &mut Graph,
     ) {
         for item in menu_items.values() {
             if filter.iter().any(|filter| item.name.starts_with(filter)) && ui.button(&item.name).clicked() {
@@ -194,13 +192,7 @@ where
         }
     }
 
-    pub fn show(
-        &mut self,
-        ui: &mut Ui,
-        zoom_pan: &ZoomPanState,
-        content: &ContextMenu<M>,
-        graph: &mut Graph<M::GraphData>,
-    ) {
+    pub fn show(&mut self, ui: &mut Ui, zoom_pan: &ZoomPanState, content: &ContextMenu<M>, graph: &mut Graph) {
         ui.horizontal(|ui| {
             ui.text_edit_singleline(&mut self.filter).request_focus();
             if ui.button("X").clicked() {

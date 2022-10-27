@@ -1,6 +1,6 @@
 use crate::{
     node_graph::{
-        BoxedInput, BoxedOutput, InputId, InputOutputId, OutputId, PortSelection, PortStyle, PortViewState,
+        BoxedInput, BoxedOutput, InputId, InputOutputId, OutputId, PortSelection, PortStyle, PortStyles, PortViewState,
         ZoomPanState,
     },
     utils::{FrameWithHeader, Scale},
@@ -12,7 +12,6 @@ use shine_core::{
     slotmap::new_key_type,
     smallbox::{smallbox, space, SmallBox},
 };
-use std::{any::TypeId, collections::HashMap};
 
 new_key_type! { pub struct NodeId; }
 
@@ -115,7 +114,7 @@ impl Node {
         ui: &mut Ui,
         zoom_pan: &ZoomPanState,
         port_visual: &mut PortViewState,
-        type_info: &HashMap<TypeId, PortStyle>,
+        port_styles: &PortStyles,
     ) -> NodeState {
         let id = zoom_pan.child_id(self.id);
 
@@ -147,7 +146,7 @@ impl Node {
                                 let mut height_before = port_top;
                                 for (idx, input) in self.inputs.iter_mut().enumerate() {
                                     let type_id = input.port_type_id();
-                                    if let Some(style) = type_info.get(&type_id) {
+                                    if let Some(style) = port_styles.find(type_id) {
                                         input.show(ui, style);
                                         let height_after = ui.min_rect().bottom();
                                         let y = (height_after + height_before) / 2.;
@@ -164,7 +163,7 @@ impl Node {
                                 let mut height_before = port_top;
                                 for (idx, output) in self.outputs.iter_mut().enumerate() {
                                     let type_id = output.port_type_id();
-                                    if let Some(style) = type_info.get(&type_id) {
+                                    if let Some(style) = port_styles.find(type_id) {
                                         output.show(ui, style);
                                         let height_after = ui.min_rect().bottom();
                                         let y = (height_after + height_before) / 2.;
@@ -192,8 +191,8 @@ impl Node {
                                 InputOutputId::Input(_) => pos2(port_rect.left(), y),
                                 InputOutputId::Output(_) => pos2(port_rect.right(), y),
                             };
-                            let style = type_info
-                                .get(&port_id.port_type_id())
+                            let style = port_styles
+                                .find(port_id.port_type_id())
                                 .expect("Port shall be drown only with known types");
                             self.draw_port(
                                 painter,

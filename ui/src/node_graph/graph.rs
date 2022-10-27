@@ -1,63 +1,63 @@
-use crate::node_graph::{
-    Connection, ConnectionData, ConnectionId, InputId, Node, NodeId, OutputId, OutputPort, PortStyle,
+use crate::node_graph::{Connection, ConnectionId, InputId, InputPort, Node, NodeId, OutputId, OutputPort, PortStyles};
+use shine_core::{
+    downcast_rs::{impl_downcast, Downcast},
+    slotmap::SlotMap,
 };
-use shine_core::slotmap::SlotMap;
-use std::{
-    any::{Any, TypeId},
-    collections::HashMap,
-};
+use std::{collections::HashMap, sync::Arc};
 
-use super::InputPort;
+pub trait Validator: 'static + Downcast + Send + Sync {
+    fn try_create_connection(&self, graph: &Graph, input_id: InputId, output_id: OutputId) -> Option<Connection>;
+}
+impl_downcast!(Validator);
 
-pub trait GraphData: Clone + Send + Sync + 'static {
-    type ConnectionData: ConnectionData;
-
-    fn clear(&mut self);
+/// The default validator that
+pub struct DefaultValidator;
+impl Validator for DefaultValidator {
+    fn try_create_connection(&self, _graph: &Graph, input_id: InputId, output_id: OutputId) -> Option<Connection> {
+        if input_id.port_type_id() == output_id.port_type_id() {
+            Some(Connection::new(input_id, output_id, ()))
+        } else {
+            None
+        }
+    }
 }
 
 /// The node graph.
-pub struct Graph<G>
-where
-    G: GraphData,
-{
-    pub type_styles: HashMap<TypeId, PortStyle>,
-    pub nodes: SlotMap<NodeId, Node>,
-    pub connections: SlotMap<ConnectionId, Connection<G::ConnectionData>>,
-    pub data: G,
+pub struct Graph {
+    styles: Arc<PortStyles>,
+    nodes: SlotMap<NodeId, Node>,
+    connections: SlotMap<ConnectionId, Connection>,
+    connection_map: HashMap<(InputId, OutputId), ConnectionId>,
+    validator: Box<dyn Validator>,
 }
 
-impl<G> Default for Graph<G>
-where
-    G: Default + GraphData,
-{
+impl Default for Graph {
     fn default() -> Self {
         Self {
-            type_styles: HashMap::default(),
+            styles: Arc::new(PortStyles::default()),
             nodes: SlotMap::default(),
             connections: SlotMap::default(),
-            data: G::default(),
+            connection_map: HashMap::new(),
+            validator: Box::new(DefaultValidator),
         }
     }
 }
 
-impl<G> Graph<G>
-where
-    G: GraphData,
-{
-    /// Create a new graph with the given user data
-    pub fn new_with_data(data: G) -> Self {
-        Self {
-            type_styles: HashMap::default(),
-            nodes: SlotMap::default(),
-            connections: SlotMap::default(),
-            data,
-        }
+impl Graph {
+    pub fn get_port_styles(&self) -> &Arc<PortStyles> {
+        &self.styles
     }
 
-    /// Create a new port-type.
-    pub fn set_type_style<T: Any>(&mut self, port: PortStyle) {
-        let ty = TypeId::of::<T>();
-        self.type_styles.insert(ty, port);
+    pub fn set_port_styles<S: Into<Arc<PortStyles>>>(&mut self, style: S) {
+        self.styles = style.into()
+    }
+
+    pub fn set_validator<V: Validator>(&mut self, validator: V) {
+        self.validator = Box::new(validator);
+    }
+
+    pub fn validator(&self) -> &dyn Validator {
+        &*self.validator
     }
 
     /// Add a new node to the graph with the given builder.
@@ -68,21 +68,72 @@ where
         self.nodes.insert_with_key(node)
     }
 
-    /// Remove a node with its connections from the graph
+    /// Remove a node with its connections from the graph.
     pub fn remove_node(&mut self, node_id: NodeId) {
         self.nodes.remove(node_id);
-        // also remove connections
+
         self.connections.retain(|_, connection| {
-            connection.input_id.node_id() != node_id && connection.output_id.node_id() != node_id
+            if connection.input_node_id() == node_id && connection.output_node_id() == node_id {
+                let key = (connection.input_id(), connection.output_id());
+                self.connection_map.remove(&key);
+                false
+            } else {
+                true
+            }
         })
     }
 
-    /// Add a new connection to the graph with the given builder
-    pub fn add_connection<F>(&mut self, connection: F) -> ConnectionId
-    where
-        F: FnOnce(ConnectionId) -> Connection<G::ConnectionData>,
-    {
-        self.connections.insert_with_key(connection)
+    pub fn nodes(&self) -> impl Iterator<Item = &Node> {
+        self.nodes.values()
+    }
+
+    pub fn nodes_mut(&mut self) -> impl Iterator<Item = &mut Node> {
+        self.nodes.values_mut()
+    }
+
+    pub fn node(&self, node_id: NodeId) -> Option<&Node> {
+        self.nodes.get(node_id)
+    }
+
+    pub fn node_mut(&mut self, node_id: NodeId) -> Option<&mut Node> {
+        self.nodes.get_mut(node_id)
+    }
+
+    /// Add a new connection to the graph with the given builder.
+    /// # Panics
+    /// This function will panic if there is a connection between these two ports.
+    pub fn add_connection(&mut self, connection: Connection) -> ConnectionId {
+        let key = (connection.input_id(), connection.output_id());
+        assert!(!self.connection_map.contains_key(&key));
+        let connection_id = self
+            .connections
+            .insert_with_key(|connection_id| connection.with_id(connection_id));
+        self.connection_map.insert(key, connection_id);
+        connection_id
+    }
+
+    pub fn remove_connection(&mut self, connection_id: ConnectionId) {
+        self.connections.remove(connection_id);
+    }
+
+    pub fn connections(&self) -> impl Iterator<Item = &Connection> {
+        self.connections.values()
+    }
+
+    pub fn connections_mut(&mut self) -> impl Iterator<Item = &mut Connection> {
+        self.connections.values_mut()
+    }
+
+    pub fn connection(&self, connection_id: ConnectionId) -> Option<&Connection> {
+        self.connections.get(connection_id)
+    }
+
+    pub fn connection_mut(&mut self, connection_id: ConnectionId) -> Option<&mut Connection> {
+        self.connections.get_mut(connection_id)
+    }
+
+    pub fn find_connections(&self, input_id: InputId, output_id: OutputId) -> Option<ConnectionId> {
+        self.connection_map.get(&(input_id, output_id)).cloned()
     }
 
     pub fn get_input(&self, input_id: InputId) -> Option<&dyn InputPort> {
@@ -101,9 +152,7 @@ where
 
     /// Clear the graph, but keeps the allocated memory.
     pub fn clear(&mut self) {
-        self.type_styles.clear();
         self.nodes.clear();
         self.connections.clear();
-        self.data.clear();
     }
 }

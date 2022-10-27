@@ -1,51 +1,39 @@
 use crate::node_graph::{
-    utils::draw_connection, Graph, GraphData, InputId, InputOutputId, OutputId, PortSelection, PortViewState,
-    ZoomPanState,
+    utils::draw_connection, Connection, Graph, InputOutputId, PortSelection, PortViewState, ZoomPanState,
 };
 use egui::{Id, Pos2, Stroke, Ui};
+use shine_core::atomic_refcell::AtomicRefCell;
+use std::sync::Arc;
 
-use super::ConnectionData;
-
-pub(in crate::node_graph) enum ConnectionResult<C>
-where
-    C: ConnectionData,
-{
+#[allow(clippy::large_enum_variant)]
+pub(in crate::node_graph) enum ConnectionResult {
     Pending,
-    Completed(Option<(InputId, OutputId, C)>),
+    Completed(Option<Connection>),
 }
 
 /// Edit connection between ports
-#[derive(Clone, Debug)]
-pub(in crate::node_graph) struct ConnectionEditState<C>
-where
-    C: ConnectionData,
-{
+#[derive(Clone)]
+pub(in crate::node_graph) struct ConnectionEditState {
     start: Option<InputOutputId>,
     start_pos: Option<Pos2>,
     end: Option<InputOutputId>,
     end_pos: Option<Pos2>,
-    connection_data: Option<C>,
+    connection: Arc<AtomicRefCell<Option<Connection>>>,
 }
 
-impl<C> Default for ConnectionEditState<C>
-where
-    C: ConnectionData,
-{
+impl Default for ConnectionEditState {
     fn default() -> Self {
         Self {
             start: None,
             start_pos: None,
             end: None,
             end_pos: None,
-            connection_data: None,
+            connection: Arc::new(AtomicRefCell::new(None)),
         }
     }
 }
 
-impl<C> ConnectionEditState<C>
-where
-    C: ConnectionData,
-{
+impl ConnectionEditState {
     pub fn load(ui: &mut Ui, id: Id) -> Option<Self> {
         ui.data().get_temp(id)
     }
@@ -55,7 +43,7 @@ where
     }
 
     pub fn prepare(&self, port_visual: &mut PortViewState) {
-        let selection = if self.connection_data.is_some() {
+        let selection = if self.connection.borrow().is_some() {
             PortSelection::Hover
         } else {
             PortSelection::Error
@@ -70,7 +58,7 @@ where
         }
     }
 
-    fn draw<G: GraphData>(&self, ui: &mut Ui, zoom_pan: &ZoomPanState, graph: &Graph<G>) {
+    fn draw(&self, ui: &mut Ui, zoom_pan: &ZoomPanState, graph: &Graph) {
         zoom_pan.show_clipped(ui, |ui| {
             if let (Some(start), Some(start_pos), Some(end_pos)) = (&self.start, self.start_pos, self.end_pos) {
                 let (start_pos, end_pos) = if start.is_input() {
@@ -81,10 +69,10 @@ where
 
                 let type_id = start.port_type_id();
                 let style = graph
-                    .type_styles
-                    .get(&type_id)
+                    .get_port_styles()
+                    .find(type_id)
                     .expect("Connection shall be drown only with known types");
-                let color = if self.connection_data.is_some() {
+                let color = if self.connection.borrow().is_some() {
                     style.hover_color
                 } else {
                     style.error_color
@@ -102,16 +90,13 @@ where
         })
     }
 
-    pub fn update<G>(
+    pub fn update(
         &mut self,
         ui: &mut Ui,
         zoom_pan: &ZoomPanState,
         port_visual: &PortViewState,
-        graph: &mut Graph<G>,
-    ) -> ConnectionResult<G::ConnectionData>
-    where
-        G: GraphData<ConnectionData = C>,
-    {
+        graph: &mut Graph,
+    ) -> ConnectionResult {
         let pointer_pos = ui.ctx().pointer_latest_pos().unwrap_or(Pos2::ZERO);
         let pointer_down = ui.input().pointer.any_down();
 
@@ -123,7 +108,7 @@ where
             self.start_pos = Some(pos);
             self.end = None;
             self.end_pos = None;
-            self.connection_data = None;
+            *self.connection.borrow_mut() = None;
 
             ConnectionResult::Pending
         } else {
@@ -138,41 +123,38 @@ where
                 self.end_pos = Some(pos);
 
                 if update_validity {
-                    self.connection_data = match (self.start.unwrap(), self.end.unwrap()) {
+                    let connection = match (self.start.unwrap(), self.end.unwrap()) {
                         (InputOutputId::Input(input_id), InputOutputId::Output(output_id)) => {
-                            <G::ConnectionData as ConnectionData>::try_connect(graph, input_id, output_id)
+                            if graph.find_connections(input_id, output_id).is_none() {
+                                graph.validator().try_create_connection(graph, input_id, output_id)
+                            } else {
+                                None
+                            }
                         }
                         (InputOutputId::Output(output_id), InputOutputId::Input(input_id)) => {
-                            <G::ConnectionData as ConnectionData>::try_connect(graph, input_id, output_id)
+                            if graph.find_connections(input_id, output_id).is_none() {
+                                graph.validator().try_create_connection(graph, input_id, output_id)
+                            } else {
+                                None
+                            }
                         }
                         _ => None,
                     };
+
+                    *self.connection.borrow_mut() = connection;
                 }
             } else {
                 self.end = None;
                 self.end_pos = Some(pointer_pos);
-                self.connection_data = None;
+                *self.connection.borrow_mut() = None;
             }
 
             self.draw(ui, zoom_pan, graph);
 
             if !pointer_down {
-                let operation = if let Some(connection_data) = self.connection_data.take() {
-                    match (self.start.unwrap(), self.end.unwrap()) {
-                        (InputOutputId::Input(input_id), InputOutputId::Output(output_id)) => {
-                            Some((input_id, output_id, connection_data))
-                        }
-                        (InputOutputId::Output(output_id), InputOutputId::Input(input_id)) => {
-                            Some((input_id, output_id, connection_data))
-                        }
-                        _ => unreachable!(),
-                    }
-                } else {
-                    None
-                };
-
+                let connection = self.connection.borrow_mut().take();
                 self.cancel();
-                ConnectionResult::Completed(operation)
+                ConnectionResult::Completed(connection)
             } else {
                 ConnectionResult::Pending
             }

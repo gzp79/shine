@@ -1,6 +1,6 @@
 use crate::node_graph::{
-    Connection, ConnectionEditState, ConnectionResult, ContextMenu, ContextMenuData, ContextMenuState, Graph,
-    GraphData, PortViewState, ZoomPanState,
+    ConnectionEditState, ConnectionResult, ContextMenu, ContextMenuData, ContextMenuState, Graph, PortViewState,
+    ZoomPanState,
 };
 use egui::{Id, Key, Sense, Ui};
 
@@ -30,22 +30,20 @@ impl GraphEditState {
 }
 
 /// The graph editor widget
-pub struct GraphEdit<'a, M, G>
+pub struct GraphEdit<'a, M>
 where
-    M: ContextMenuData<GraphData = G>,
-    G: GraphData,
+    M: ContextMenuData,
 {
     id: Id,
-    graph: &'a mut Graph<G>,
+    graph: &'a mut Graph,
     context_menu: &'a ContextMenu<M>,
 }
 
-impl<'a, M, G> GraphEdit<'a, M, G>
+impl<'a, M> GraphEdit<'a, M>
 where
-    M: ContextMenuData<GraphData = G>,
-    G: GraphData,
+    M: ContextMenuData,
 {
-    pub fn new<I: Into<Id>>(id: I, graph: &'a mut Graph<G>, context_menu: &'a ContextMenu<M>) -> Self {
+    pub fn new<I: Into<Id>>(id: I, graph: &'a mut Graph, context_menu: &'a ContextMenu<M>) -> Self {
         Self {
             id: id.into(),
             graph,
@@ -63,8 +61,9 @@ where
         // render nodes
         let mut dragged_node = None;
 
-        for node in self.graph.nodes.values_mut() {
-            let node_state = node.show(ui, zoom_pan, port_visual, &self.graph.type_styles);
+        let style = self.graph.get_port_styles().clone();
+        for node in self.graph.nodes_mut() {
+            let node_state = node.show(ui, zoom_pan, port_visual, &style);
             if node_state.dragged {
                 dragged_node = Some(node_state);
             }
@@ -84,8 +83,8 @@ where
         }
 
         //render connections
-        for connection in self.graph.connections.values() {
-            connection.show(ui, zoom_pan, port_visual, self.graph)
+        for connection in self.graph.connections_mut() {
+            connection.show(ui, zoom_pan, port_visual, &style)
         }
     }
 
@@ -116,10 +115,9 @@ where
         if matches!(editor_state.mode, EditorMode::EditConnection) {
             editor_state.mode = match connection_edit.update(ui, &zoom_pan, &port_visual, self.graph) {
                 ConnectionResult::Pending => EditorMode::EditConnection,
-                ConnectionResult::Completed(link) => {
-                    if let Some((input, output, data)) = link {
-                        self.graph
-                            .add_connection(|connection_id| Connection::new(connection_id, input, output, data));
+                ConnectionResult::Completed(connection) => {
+                    if let Some(connection) = connection {
+                        self.graph.add_connection(connection);
                     }
                     EditorMode::None
                 }

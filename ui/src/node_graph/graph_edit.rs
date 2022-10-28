@@ -1,6 +1,5 @@
 use crate::node_graph::{
-    ConnectionEditState, ConnectionResult, ContextMenu, ContextMenuData, ContextMenuState, Graph, PortViewState,
-    ZoomPanState,
+    ConnectionEditState, ConnectionResult, ContextMenu, ContextMenuState, Graph, PortViewState, ZoomPanState,
 };
 use egui::{Id, Key, Sense, Ui};
 
@@ -30,20 +29,14 @@ impl GraphEditState {
 }
 
 /// The graph editor widget
-pub struct GraphEdit<'a, M>
-where
-    M: ContextMenuData,
-{
+pub struct GraphEdit<'a> {
     id: Id,
     graph: &'a mut Graph,
-    context_menu: &'a ContextMenu<M>,
+    context_menu: &'a ContextMenu,
 }
 
-impl<'a, M> GraphEdit<'a, M>
-where
-    M: ContextMenuData,
-{
-    pub fn new<I: Into<Id>>(id: I, graph: &'a mut Graph, context_menu: &'a ContextMenu<M>) -> Self {
+impl<'a> GraphEdit<'a> {
+    pub fn new<I: Into<Id>>(id: I, graph: &'a mut Graph, context_menu: &'a ContextMenu) -> Self {
         Self {
             id: id.into(),
             graph,

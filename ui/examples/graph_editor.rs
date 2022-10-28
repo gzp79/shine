@@ -161,7 +161,7 @@ impl Validator for MyGraphValidator {
 struct MyApp {
     tool: SideTool,
     graph: Graph,
-    context_menu: ContextMenu<MyContextMenuData>,
+    context_menu: ContextMenu,
 }
 
 impl Default for MyApp {

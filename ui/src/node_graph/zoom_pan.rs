@@ -1,6 +1,7 @@
 use crate::utils::Scale;
 use egui::{pos2, vec2, Id, Pos2, Rect, Style, Ui, Vec2};
-use std::{hash::Hash, sync::Arc};
+use shine_core::collections::HashWithType;
+use std::{any::Any, hash::Hash, sync::Arc};
 
 #[derive(Clone)]
 pub(in crate::node_graph) struct ZoomPanState {
@@ -33,8 +34,8 @@ impl ZoomPanState {
         }
     }
 
-    pub fn child_id<I: Hash>(&self, id: I) -> Id {
-        self.id.with(id)
+    pub fn child_id<I: Any + Hash>(&self, id: I) -> Id {
+        self.id.with(HashWithType(id))
     }
 
     /*pub fn vec2_area_to_screen(&self, v: Vec2) -> Vec2 {

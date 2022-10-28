@@ -129,6 +129,7 @@ impl Node {
             .drag_bounds(Rect::EVERYTHING)
             .show(ui.ctx(), |ui| {
                 ui.set_clip_rect(zoom_pan.screen_rect);
+                ui.set_max_size(Vec2::INFINITY);
 
                 let mut node_rect = Rect::NOTHING;
                 let margin = ui.style().spacing.window_margin.scaled(2.);

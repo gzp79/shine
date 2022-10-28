@@ -54,7 +54,7 @@ impl PortViewState {
         inner.screen_location.clear();
     }
 
-    pub fn is_nodes_enabled(&mut self) -> bool {
+    pub fn is_nodes_enabled(&self) -> bool {
         self.nodes_enabled
     }
 
@@ -62,7 +62,7 @@ impl PortViewState {
         self.nodes_enabled = enabled;
     }
 
-    pub fn is_ports_enabled(&mut self) -> bool {
+    pub fn is_ports_enabled(&self) -> bool {
         self.ports_enabled
     }
 

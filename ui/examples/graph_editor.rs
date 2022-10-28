@@ -4,6 +4,7 @@ use shine_ui::node_graph::{
     Connection, ConnectionData, ContextMenu, ContextMenuData, Graph, GraphEdit, Input, InputData, InputId, Node,
     NodeData, Output, OutputData, OutputId, PortStyle, PortStyles, Validator,
 };
+use std::any::TypeId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SideTool {
@@ -125,19 +126,32 @@ impl NodeData for SampleNodeData {
     }
 }
 
-pub struct SampleConnectionData {}
-impl ConnectionData for SampleConnectionData {}
+pub struct SampleConnectionData {
+    value: String,
+}
+
+impl ConnectionData for SampleConnectionData {
+    fn show(&mut self, ui: &mut Ui, _style: &PortStyle) {
+        ui.label(&self.value);
+    }
+}
 
 pub struct MyGraphValidator;
 
 impl Validator for MyGraphValidator {
     fn try_create_connection(&self, _graph: &Graph, input_id: InputId, output_id: OutputId) -> Option<Connection> {
         if input_id.port_type_id() == output_id.port_type_id() {
-            Some(Connection::new(
-                input_id,
-                output_id,
-                SampleConnectionData {},
-            ))
+            if input_id.port_type_id() == TypeId::of::<u8>() {
+                Some(Connection::new(
+                    input_id,
+                    output_id,
+                    SampleConnectionData {
+                        value: "note".to_string(),
+                    },
+                ))
+            } else {
+                Some(Connection::new(input_id, output_id, ()))
+            }
         } else {
             None
         }

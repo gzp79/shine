@@ -156,13 +156,14 @@ where
         }
 
         // some debug stuff
+        /*
         egui::Window::new("debug")
             .id(self.id.with("debug"))
             .drag_bounds(zoom_pan.screen_rect)
             .show(ui.ctx(), |ui| {
                 ui.label(format!("mode: {:?}", editor_state.mode));
                 ui.label(format!("clip: {:?}", zoom_pan.screen_rect));
-            });
+            });*/
 
         editor_state.store(ui, self.id);
         zoom_pan.store(ui, self.id);

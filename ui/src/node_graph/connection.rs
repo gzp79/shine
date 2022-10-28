@@ -1,7 +1,8 @@
 use crate::node_graph::{
-    utils::draw_connection, InputId, NodeId, OutputId, PortStyles, PortViewState, ZoomPanState,
+    utils::draw_connection, InputId, NodeId, OutputId, PortStyle, PortStyles, PortViewState, ZoomPanState,
 };
-use egui::{Stroke, Ui};
+use egui::{Area, Order, Rect, Stroke, Ui};
+use emath::Align2;
 use shine_core::{
     downcast_rs::{impl_downcast, Downcast},
     slotmap::new_key_type,
@@ -11,12 +12,12 @@ use shine_core::{
 new_key_type! { pub struct ConnectionId; }
 
 pub trait ConnectionData: 'static + Downcast + Send + Sync {
-    //fn show(&mut self, ui: &mut Ui, style: &PortStyle);
+    fn show(&mut self, ui: &mut Ui, style: &PortStyle);
 }
 impl_downcast!(ConnectionData);
 
 impl ConnectionData for () {
-    //fn show(&mut self, _ui: &mut Ui, _style: &PortStyle) {}
+    fn show(&mut self, _ui: &mut Ui, _style: &PortStyle) {}
 }
 
 type BoxedConnectionData = SmallBox<dyn ConnectionData, space::S32>;
@@ -103,11 +104,31 @@ impl Connection {
                         width: style.connection_width * zoom_pan.zoom,
                     },
                 );
-                /*{
-                    let rect = Rect::from_points(&[start, end]);    
-                    let mut ui = ui.child_ui(rect, Layout::centered_and_justified(Direction::TopDown));
-                    self.data.show(&mut ui, style);
-                }*/
+
+                /*if self.data.is_visible() */
+                {
+                    let rect = Rect::from_points(&[start, end]);
+                    /*ui.painter().rect(
+                        rect,
+                        0.,
+                        egui::Color32::TRANSPARENT,
+                        egui::Stroke::new(1., egui::Color32::YELLOW),
+                    );*/
+                    let screen_center = ui.ctx().available_rect().center();
+                    let rect_center = rect.center();
+                    let offset = rect_center - screen_center;
+                    let id = zoom_pan.child_id(self.id);
+                    Area::new(id)
+                        .order(Order::Middle)
+                        .anchor(Align2::CENTER_CENTER, offset)
+                        .enabled(port_visual.is_nodes_enabled())
+                        .movable(false)
+                        .show(ui.ctx(), |ui| {
+                            ui.set_max_size(rect.size());
+                            ui.set_clip_rect(zoom_pan.screen_rect);
+                            self.data.show(ui, style);
+                        });
+                }
             } else {
                 log::warn!("Skipping connection {:?}, style for {:?} not found", self.id(), type_id);
             }

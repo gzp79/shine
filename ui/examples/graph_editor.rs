@@ -27,56 +27,39 @@ impl ContextMenuData for MyContextMenuData {
     fn on_select(&self, graph: &mut Graph, location: Pos2) {
         match self {
             MyContextMenuData::AddMinimalNode => {
-                graph.add_node(|node_id| Node::new(node_id, "minimal", location, vec![], vec![], ()));
+                graph.add_node(Node::new("minimal", location, vec![], vec![]));
             }
             MyContextMenuData::AddU8Node => {
-                graph.add_node(|node_id| {
-                    Node::new(node_id, "u8", location, vec![], vec![Output::new::<u8>("value")], ())
-                });
+                graph.add_node(Node::new("u8", location, vec![], vec![Output::new::<u8>("value")]));
             }
             MyContextMenuData::AddU16Node => {
-                graph.add_node(|node_id| {
-                    Node::new(
-                        node_id,
-                        "u16",
-                        location,
-                        vec![],
-                        vec![Output::new::<u16>("value")],
-                        SampleNodeData {
-                            value: "edit my node data".to_string(),
-                        },
-                    )
-                });
+                graph.add_node(
+                    Node::new("u16", location, vec![], vec![Output::new::<u16>("value")]).with_data(SampleNodeData {
+                        value: "edit my node data".to_string(),
+                    }),
+                );
             }
             MyContextMenuData::AddU32Node => {
-                graph.add_node(|node_id| {
-                    Node::new(
-                        node_id,
-                        "u32",
-                        location,
-                        vec![],
-                        vec![Output::new::<u32>("value").with(SampleOutput {
-                            value: "update me".to_string(),
-                        })],
-                        (),
-                    )
-                });
+                graph.add_node(Node::new(
+                    "u32",
+                    location,
+                    vec![],
+                    vec![Output::new::<u32>("value").with(SampleOutput {
+                        value: "update me".to_string(),
+                    })],
+                ));
             }
             MyContextMenuData::AddComplexNode => {
-                graph.add_node(|node_id| {
-                    Node::new(
-                        node_id,
-                        "complex",
-                        location,
-                        vec![
-                            Input::new::<u8>("in1").with(SampleInput { value: 10. }),
-                            Input::new::<u16>("in2"),
-                            Input::new::<u32>("in3"),
-                        ],
-                        vec![Output::new::<u8>("calculated")],
-                        (),
-                    )
-                });
+                graph.add_node(Node::new(
+                    "complex",
+                    location,
+                    vec![
+                        Input::new::<u8>("in1").with(SampleInput { value: 10. }),
+                        Input::new::<u16>("in2"),
+                        Input::new::<u32>("in3"),
+                    ],
+                    vec![Output::new::<u8>("calculated")],
+                ));
             }
             MyContextMenuData::ClearGraph => {
                 graph.clear();

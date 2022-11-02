@@ -2,6 +2,7 @@ use crate::node_graph::{Connection, ConnectionId, Input, InputId, Node, NodeId, 
 use shine_core::{
     downcast_rs::{impl_downcast, Downcast},
     slotmap::SlotMap,
+    smallbox::{smallbox, space, SmallBox},
 };
 use std::{collections::HashMap, sync::Arc};
 
@@ -22,12 +23,20 @@ impl Validator for DefaultValidator {
     }
 }
 
+pub trait GraphData: 'static + Downcast + Send + Sync {}
+impl_downcast!(GraphData);
+
+impl GraphData for () {}
+
+type BoxedGraphData = SmallBox<dyn GraphData, space::S32>;
+
 /// The node graph.
 pub struct Graph {
     styles: Arc<PortStyles>,
     nodes: SlotMap<NodeId, Node>,
     connections: SlotMap<ConnectionId, Connection>,
     connection_map: HashMap<(InputId, OutputId), ConnectionId>,
+    data: BoxedGraphData,
     validator: Box<dyn Validator>,
 }
 
@@ -38,12 +47,20 @@ impl Default for Graph {
             nodes: SlotMap::default(),
             connections: SlotMap::default(),
             connection_map: HashMap::new(),
+            data: smallbox!(()),
             validator: Box::new(DefaultValidator),
         }
     }
 }
 
 impl Graph {
+    pub fn with<G: GraphData>(self, data: G) -> Self {
+        Self {
+            data: smallbox!(data),
+            ..self
+        }
+    }
+
     pub fn get_port_styles(&self) -> &Arc<PortStyles> {
         &self.styles
     }
@@ -60,12 +77,15 @@ impl Graph {
         &*self.validator
     }
 
+    /// Clear the graph, but keeps the allocated memory.
+    pub fn clear(&mut self) {
+        self.nodes.clear();
+        self.connections.clear();
+    }
+
     /// Add a new node to the graph with the given builder.
-    pub fn add_node<F>(&mut self, node: F) -> NodeId
-    where
-        F: FnOnce(NodeId) -> Node,
-    {
-        self.nodes.insert_with_key(node)
+    pub fn add_node(&mut self, node: Node) -> NodeId {
+        self.nodes.insert_with_key(|node_id| node.with_id(node_id))
     }
 
     /// Remove a node with its connections from the graph.
@@ -148,9 +168,17 @@ impl Graph {
             .and_then(|node| node.outputs.get(output_id.port_id()))
     }
 
-    /// Clear the graph, but keeps the allocated memory.
-    pub fn clear(&mut self) {
-        self.nodes.clear();
-        self.connections.clear();
+    pub fn data(&self) -> &dyn GraphData {
+        &*self.data
+    }
+
+    pub fn data_as<T: GraphData>(&self) -> &T {
+        let data = &*self.data;
+        data.downcast_ref::<T>().unwrap()
+    }
+
+    pub fn data_mut_as<T: GraphData>(&mut self) -> &mut T {
+        let data = &mut *self.data;
+        data.downcast_mut::<T>().unwrap()
     }
 }

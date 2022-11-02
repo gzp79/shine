@@ -72,8 +72,8 @@ impl Default for ContextMenu {
 }
 
 impl ContextMenu {
-    pub fn builder(&mut self) -> ConextSubMenuBuilder<'_> {
-        ConextSubMenuBuilder {
+    pub fn builder(&mut self) -> ConextMenuBuilder<'_> {
+        ConextMenuBuilder {
             menu_items: &mut self.items,
             corrent: &mut self.root,
         }
@@ -87,12 +87,12 @@ impl ContextMenu {
     }
 }
 
-pub struct ConextSubMenuBuilder<'m> {
+pub struct ConextMenuBuilder<'m> {
     menu_items: &'m mut SlotMap<ContextMenuId, ContextMenuItem>,
     corrent: &'m mut ContextMenuKind,
 }
 
-impl<'m> ConextSubMenuBuilder<'m> {
+impl<'m> ConextMenuBuilder<'m> {
     pub fn add_item<S: ToString, M: ContextMenuData>(&mut self, name: S, data: M) -> &mut Self {
         let id = self
             .menu_items
@@ -105,7 +105,7 @@ impl<'m> ConextSubMenuBuilder<'m> {
         }
     }
 
-    pub fn add_group<'n, S: ToString>(&'n mut self, name: S) -> ConextSubMenuBuilder<'n>
+    pub fn add_group<'n, S: ToString>(&'n mut self, name: S) -> ConextMenuBuilder<'n>
     where
         'm: 'n,
     {
@@ -115,7 +115,7 @@ impl<'m> ConextSubMenuBuilder<'m> {
                 items: Vec::new(),
             });
             let corrent = items.last_mut().unwrap();
-            ConextSubMenuBuilder {
+            ConextMenuBuilder {
                 menu_items: self.menu_items,
                 corrent,
             }

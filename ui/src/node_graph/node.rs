@@ -35,26 +35,30 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new<S: ToString, N: NodeData>(
-        node_id: NodeId,
-        caption: S,
-        location: Pos2,
-        inputs: Vec<Input>,
-        outputs: Vec<Output>,
-        data: N,
-    ) -> Self {
+    pub fn new<S: ToString>(caption: S, location: Pos2, inputs: Vec<Input>, outputs: Vec<Output>) -> Self {
         Self {
-            id: node_id,
+            id: NodeId::default(),
             caption: caption.to_string(),
             inputs,
             outputs,
             location,
-            data: smallbox!(data),
+            data: smallbox!(()),
         }
+    }
+
+    pub fn with_id(self, node_id: NodeId) -> Self {
+        Self { id: node_id, ..self }
     }
 
     pub fn id(&self) -> NodeId {
         self.id
+    }
+
+    pub fn with_data<N: NodeData>(self, data: N) -> Self {
+        Self {
+            data: smallbox!(data),
+            ..self
+        }
     }
 
     pub fn data(&self) -> &dyn NodeData {

@@ -65,7 +65,7 @@ impl Input {
     }
 
     pub fn show(&mut self, ui: &mut Ui, style: &PortStyle) {
-        ui.label(&self.name);        
+        ui.label(&self.name);
         self.data.show(ui, style);
     }
 }

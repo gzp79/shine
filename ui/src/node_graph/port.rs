@@ -4,82 +4,69 @@ use shine_core::{
     downcast_rs::{impl_downcast, Downcast},
     smallbox::{smallbox, space, SmallBox},
 };
-use std::{
-    any::{Any, TypeId},
-    marker::PhantomData,
-};
+use std::any::{Any, TypeId};
 
 /// Some dummy type for "null" input and output ids.
 struct Void;
 
-pub trait InputPort: 'static + Downcast {
-    fn name(&self) -> &str;
-    fn port_type_id(&self) -> TypeId;
+pub trait InputPortData: 'static + Downcast + Send + Sync {
     fn show(&mut self, ui: &mut Ui, style: &PortStyle);
 }
-impl_downcast!(InputPort);
+impl_downcast!(InputPortData);
 
-pub type BoxedInput = SmallBox<dyn InputPort, space::S32>;
-
-pub trait InputData: 'static + Send + Sync {
-    fn show(&mut self, ui: &mut Ui, style: &PortStyle);
-}
-
-impl InputData for () {
+impl InputPortData for () {
     fn show(&mut self, _ui: &mut Ui, _style: &PortStyle) {}
 }
 
+type BoxedInputPortData = SmallBox<dyn InputPortData, space::S2>;
+
 /// Input port
-pub struct Input<T, I = ()>
-where
-    T: Any,
-    I: InputData,
-{
+pub struct Input {
     pub name: String,
-    pub data: I,
-    _ph: PhantomData<T>,
+    port_type_id: TypeId,
+    data: BoxedInputPortData,
 }
 
-impl<T, I> Input<T, I>
-where
-    T: Any,
-    I: InputData,
-{
-    pub fn new<S: ToString>(name: S, data: I) -> Self {
+impl Input {
+    pub fn new<T: Any>(name: impl ToString) -> Self {
         Self {
             name: name.to_string(),
-            data,
-            _ph: PhantomData,
+            port_type_id: TypeId::of::<T>(),
+            data: smallbox!(()),
         }
     }
-}
 
-impl<T, I> InputPort for Input<T, I>
-where
-    T: Any,
-    I: InputData,
-{
-    fn name(&self) -> &str {
-        self.name.as_str()
+    pub fn with<I>(self, data: I) -> Self
+    where
+        I: InputPortData,
+    {
+        Input {
+            data: smallbox!(data),
+            ..self
+        }
     }
 
-    fn port_type_id(&self) -> TypeId {
-        TypeId::of::<T>()
+    pub fn port_type_id(&self) -> TypeId {
+        self.port_type_id
     }
 
-    fn show(&mut self, ui: &mut Ui, style: &PortStyle) {
-        ui.label(&self.name);
+    pub fn data(&self) -> &dyn InputPortData {
+        &*self.data
+    }
+
+    pub fn data_as<T: InputPortData>(&self) -> &T {
+        let data = &*self.data;
+        data.downcast_ref::<T>().unwrap()
+    }
+
+    pub fn data_mut_as<T: InputPortData>(&mut self) -> &mut T {
+        let data = &mut *self.data;
+        data.downcast_mut::<T>().unwrap()
+    }
+
+    pub fn show(&mut self, ui: &mut Ui, style: &PortStyle) {
+        ui.label(&self.name);        
         self.data.show(ui, style);
-    }
-}
-
-impl<T, I> From<Input<T, I>> for BoxedInput
-where
-    T: Any,
-    I: InputData,
-{
-    fn from(input: Input<T, I>) -> Self {
-        smallbox!(input)
     }
 }
 
@@ -109,76 +96,64 @@ impl InputId {
         self.2
     }
 }
-
-pub trait OutputPort: 'static + Downcast {
-    fn name(&self) -> &str;
-    fn port_type_id(&self) -> TypeId;
+pub trait OutputPortData: 'static + Downcast + Send + Sync {
     fn show(&mut self, ui: &mut Ui, style: &PortStyle);
 }
+impl_downcast!(OutputPortData);
 
-impl_downcast!(OutputPort);
-
-pub type BoxedOutput = SmallBox<dyn OutputPort, space::S32>;
-
-pub trait OutputData: 'static + Send + Sync {
-    fn show(&mut self, ui: &mut Ui, style: &PortStyle);
-}
-
-impl OutputData for () {
+impl OutputPortData for () {
     fn show(&mut self, _ui: &mut Ui, _style: &PortStyle) {}
 }
 
+type BoxedOutputPortData = SmallBox<dyn OutputPortData, space::S2>;
+
 /// Output port
-pub struct Output<T, O = ()>
-where
-    T: Any,
-    O: OutputData,
-{
+pub struct Output {
     pub name: String,
-    pub data: O,
-    _ph: PhantomData<T>,
+    port_type_id: TypeId,
+    data: BoxedOutputPortData,
 }
 
-impl<T, O> Output<T, O>
-where
-    T: Any,
-    O: OutputData,
-{
-    pub fn new<S: ToString>(name: S, data: O) -> Self {
+impl Output {
+    pub fn new<T: Any>(name: impl ToString) -> Self {
         Self {
             name: name.to_string(),
-            data,
-            _ph: PhantomData,
+            port_type_id: TypeId::of::<T>(),
+            data: smallbox!(()),
         }
     }
-}
 
-impl<T, O> OutputPort for Output<T, O>
-where
-    T: Any,
-    O: OutputData,
-{
-    fn name(&self) -> &str {
-        self.name.as_str()
+    pub fn with<I>(self, data: I) -> Self
+    where
+        I: OutputPortData,
+    {
+        Output {
+            data: smallbox!(data),
+            ..self
+        }
     }
 
-    fn port_type_id(&self) -> TypeId {
-        TypeId::of::<T>()
+    pub fn port_type_id(&self) -> TypeId {
+        self.port_type_id
     }
 
-    fn show(&mut self, ui: &mut Ui, style: &PortStyle) {
+    pub fn data(&self) -> &dyn OutputPortData {
+        &*self.data
+    }
+
+    pub fn data_as<T: OutputPortData>(&self) -> &T {
+        let data = &*self.data;
+        data.downcast_ref::<T>().unwrap()
+    }
+
+    pub fn data_mut_as<T: OutputPortData>(&mut self) -> &mut T {
+        let data = &mut *self.data;
+        data.downcast_mut::<T>().unwrap()
+    }
+
+    pub fn show(&mut self, ui: &mut Ui, style: &PortStyle) {
         ui.label(&self.name);
         self.data.show(ui, style);
-    }
-}
-
-impl<T, O> From<Output<T, O>> for BoxedOutput
-where
-    T: Any,
-    O: OutputData,
-{
-    fn from(output: Output<T, O>) -> Self {
-        smallbox!(output)
     }
 }
 

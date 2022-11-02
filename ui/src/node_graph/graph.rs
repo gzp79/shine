@@ -1,4 +1,4 @@
-use crate::node_graph::{Connection, ConnectionId, InputId, InputPort, Node, NodeId, OutputId, OutputPort, PortStyles};
+use crate::node_graph::{Connection, ConnectionId, Input, InputId, Node, NodeId, Output, OutputId, PortStyles};
 use shine_core::{
     downcast_rs::{impl_downcast, Downcast},
     slotmap::SlotMap,
@@ -136,18 +136,16 @@ impl Graph {
         self.connection_map.get(&(input_id, output_id)).cloned()
     }
 
-    pub fn get_input(&self, input_id: InputId) -> Option<&dyn InputPort> {
+    pub fn get_input(&self, input_id: InputId) -> Option<&Input> {
         self.nodes
             .get(input_id.node_id())
             .and_then(|node| node.inputs.get(input_id.port_id()))
-            .map(|input| &**input)
     }
 
-    pub fn get_output(&self, output_id: OutputId) -> Option<&dyn OutputPort> {
+    pub fn get_output(&self, output_id: OutputId) -> Option<&Output> {
         self.nodes
             .get(output_id.node_id())
             .and_then(|node| node.outputs.get(output_id.port_id()))
-            .map(|output| &**output)
     }
 
     /// Clear the graph, but keeps the allocated memory.

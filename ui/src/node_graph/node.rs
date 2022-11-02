@@ -1,6 +1,6 @@
 use crate::{
     node_graph::{
-        BoxedInput, BoxedOutput, InputId, InputOutputId, OutputId, PortSelection, PortStyle, PortStyles, PortViewState,
+        Input, InputId, InputOutputId, Output, OutputId, PortSelection, PortStyle, PortStyles, PortViewState,
         ZoomPanState,
     },
     utils::{FrameWithHeader, Scale},
@@ -29,8 +29,8 @@ pub struct Node {
     id: NodeId,
     pub caption: String,
     pub location: Pos2,
-    pub inputs: Vec<BoxedInput>,
-    pub outputs: Vec<BoxedOutput>,
+    pub inputs: Vec<Input>,
+    pub outputs: Vec<Output>,
     data: BoxedNodeData,
 }
 
@@ -39,8 +39,8 @@ impl Node {
         node_id: NodeId,
         caption: S,
         location: Pos2,
-        inputs: Vec<BoxedInput>,
-        outputs: Vec<BoxedOutput>,
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
         data: N,
     ) -> Self {
         Self {

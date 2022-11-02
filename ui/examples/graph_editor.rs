@@ -1,8 +1,8 @@
 use egui::{CentralPanel, Color32, ComboBox, Id, Pos2, SidePanel, Slider, Ui};
 use egui_extras::{Size, StripBuilder};
 use shine_ui::node_graph::{
-    Connection, ConnectionData, ContextMenu, ContextMenuData, Graph, GraphEdit, Input, InputData, InputId, Node,
-    NodeData, Output, OutputData, OutputId, PortStyle, PortStyles, Validator,
+    Connection, ConnectionData, ContextMenu, ContextMenuData, Graph, GraphEdit, Input, InputId, InputPortData, Node,
+    NodeData, Output, OutputId, OutputPortData, PortStyle, PortStyles, Validator,
 };
 use std::any::TypeId;
 
@@ -31,14 +31,7 @@ impl ContextMenuData for MyContextMenuData {
             }
             MyContextMenuData::AddU8Node => {
                 graph.add_node(|node_id| {
-                    Node::new(
-                        node_id,
-                        "u8",
-                        location,
-                        vec![],
-                        vec![Output::<u8, _>::new("value", ()).into()],
-                        (),
-                    )
+                    Node::new(node_id, "u8", location, vec![], vec![Output::new::<u8>("value")], ())
                 });
             }
             MyContextMenuData::AddU16Node => {
@@ -48,7 +41,7 @@ impl ContextMenuData for MyContextMenuData {
                         "u16",
                         location,
                         vec![],
-                        vec![Output::<u16, _>::new("value", ()).into()],
+                        vec![Output::new::<u16>("value")],
                         SampleNodeData {
                             value: "edit my node data".to_string(),
                         },
@@ -62,13 +55,9 @@ impl ContextMenuData for MyContextMenuData {
                         "u32",
                         location,
                         vec![],
-                        vec![Output::<u32, _>::new(
-                            "value",
-                            SampleOutput {
-                                value: "update me".to_string(),
-                            },
-                        )
-                        .into()],
+                        vec![Output::new::<u32>("value").with(SampleOutput {
+                            value: "update me".to_string(),
+                        })],
                         (),
                     )
                 });
@@ -80,11 +69,11 @@ impl ContextMenuData for MyContextMenuData {
                         "complex",
                         location,
                         vec![
-                            Input::<u8, _>::new("in1", SampleInput { value: 10. }).into(),
-                            Input::<u16, _>::new("in2", ()).into(),
-                            Input::<u32, _>::new("in3", ()).into(),
+                            Input::new::<u8>("in1").with(SampleInput { value: 10. }),
+                            Input::new::<u16>("in2"),
+                            Input::new::<u32>("in3"),
                         ],
-                        vec![Output::<u8, _>::new("calculated", ()).into()],
+                        vec![Output::new::<u8>("calculated")],
                         (),
                     )
                 });
@@ -100,7 +89,7 @@ pub struct SampleInput {
     value: f32,
 }
 
-impl InputData for SampleInput {
+impl InputPortData for SampleInput {
     fn show(&mut self, ui: &mut Ui, _style: &PortStyle) {
         ui.add(Slider::new(&mut self.value, 0.0..=100.0).text("percent"));
     }
@@ -110,7 +99,7 @@ pub struct SampleOutput {
     value: String,
 }
 
-impl OutputData for SampleOutput {
+impl OutputPortData for SampleOutput {
     fn show(&mut self, ui: &mut Ui, _style: &PortStyle) {
         ui.text_edit_singleline(&mut self.value);
     }

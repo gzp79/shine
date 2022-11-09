@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::{
     node_graph::{
         Input, InputId, InputOutputId, Output, OutputId, PortSelection, PortStyle, PortStyles, PortViewState,
@@ -15,9 +17,46 @@ use shine_core::{
 
 new_key_type! { pub struct NodeId; }
 
+pub enum Command {
+    Moved(Pos2),
+    Custom(Box<dyn Any + Send + Sync>),
+}
+
+pub struct NodeCommand {
+    pub node_id: NodeId,
+    pub command: Command,
+}
+
+impl NodeCommand {
+    pub fn new(node_id: NodeId, command: Command) -> Self {
+        Self { node_id, command }
+    }
+
+    pub fn moved(node_id: NodeId, location: Pos2) -> Self {
+        Self {
+            node_id,
+            command: Command::Moved(location),
+        }
+    }
+
+    pub fn custom<T: 'static + Send + Sync>(node_id: NodeId, command: T) -> Self {
+        Self {
+            node_id,
+            command: Command::Custom(Box::new(command)),
+        }
+    }
+}
+
 pub trait NodeData: 'static + Downcast + Send + Sync {
-    fn show(&mut self, _ui: &mut Ui) {}
-    fn on_moved(&mut self, _new_location: Pos2) {}
+    fn show(
+        &mut self,
+        _ui: &mut Ui,
+        _node_id: NodeId,
+        _inputs: &mut Vec<Input>,
+        _outputs: &mut Vec<Output>,
+        _command_queue: &mut Vec<NodeCommand>,
+    ) {
+    }
 }
 impl_downcast!(NodeData);
 
@@ -119,8 +158,10 @@ impl Node {
         zoom_pan: &ZoomPanState,
         port_visual: &mut PortViewState,
         port_styles: &PortStyles,
+        command_queue: &mut Vec<NodeCommand>,
     ) -> NodeState {
-        let id = zoom_pan.child_id(self.id);
+        let node_id = self.id;
+        let id = zoom_pan.child_id(node_id);
 
         let mut node_state = NodeState::load(ui, id).unwrap_or_else(NodeState::new);
         let screen_location = zoom_pan.pos2_area_to_screen(self.location);
@@ -141,7 +182,8 @@ impl Node {
                 FrameWithHeader::new(&self.caption)
                     .frame(Frame::window(ui.style()).shadow(Shadow::default()).inner_margin(margin))
                     .show(ui, |ui| {
-                        self.data.show(ui);
+                        self.data
+                            .show(ui, node_id, &mut self.inputs, &mut self.outputs, command_queue);
 
                         let mut port_infos = Vec::<(InputOutputId, f32)>::new();
                         let port_top = ui.min_rect().bottom();
@@ -149,14 +191,14 @@ impl Node {
                             //inputs
                             ui.vertical(|ui| {
                                 let mut height_before = port_top;
-                                for (idx, input) in self.inputs.iter_mut().enumerate() {
+                                for (port_id, input) in self.inputs.iter_mut().enumerate() {
                                     let type_id = input.port_type_id();
                                     if let Some(style) = port_styles.find(type_id) {
-                                        input.show(ui, style);
+                                        input.show(ui, port_id, style);
                                         let height_after = ui.min_rect().bottom();
                                         let y = (height_after + height_before) / 2.;
                                         height_before = height_after;
-                                        let id = InputId::new(self.id, type_id, idx);
+                                        let id = InputId::new(node_id, type_id, port_id);
                                         port_infos.push((id.into(), y));
                                     } else {
                                         log::warn!("Skipping input port, style for {:?} not found", type_id);
@@ -166,14 +208,14 @@ impl Node {
                             // outputs
                             ui.vertical(|ui| {
                                 let mut height_before = port_top;
-                                for (idx, output) in self.outputs.iter_mut().enumerate() {
+                                for (port_id, output) in self.outputs.iter_mut().enumerate() {
                                     let type_id = output.port_type_id();
                                     if let Some(style) = port_styles.find(type_id) {
-                                        output.show(ui, style);
+                                        output.show(ui, port_id, style);
                                         let height_after = ui.min_rect().bottom();
                                         let y = (height_after + height_before) / 2.;
                                         height_before = height_after;
-                                        let id = OutputId::new(self.id, type_id, idx);
+                                        let id = OutputId::new(node_id, type_id, port_id);
                                         port_infos.push((id.into(), y));
                                     } else {
                                         log::warn!("Skipping output port, style for {:?} not found", type_id);
@@ -236,8 +278,8 @@ impl Node {
 
         if node_state.dragged && response.drag_delta() != Vec2::ZERO {
             let new_location = self.location + zoom_pan.vec2_screen_to_area(response.drag_delta());
-            self.data.on_moved(new_location);
             self.location = new_location;
+            command_queue.push(NodeCommand::moved(node_id, new_location));
         }
 
         node_state.clone().store(ui, id);

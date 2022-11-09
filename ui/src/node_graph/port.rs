@@ -10,12 +10,12 @@ use std::any::{Any, TypeId};
 struct Void;
 
 pub trait InputPortData: 'static + Downcast + Send + Sync {
-    fn show(&mut self, ui: &mut Ui, style: &PortStyle);
+    fn show(&mut self, ui: &mut Ui, port_id: usize, style: &PortStyle);
 }
 impl_downcast!(InputPortData);
 
 impl InputPortData for () {
-    fn show(&mut self, _ui: &mut Ui, _style: &PortStyle) {}
+    fn show(&mut self, _ui: &mut Ui, _port_id: usize, _style: &PortStyle) {}
 }
 
 type BoxedInputPortData = SmallBox<dyn InputPortData, space::S2>;
@@ -64,9 +64,9 @@ impl Input {
         data.downcast_mut::<T>().unwrap()
     }
 
-    pub fn show(&mut self, ui: &mut Ui, style: &PortStyle) {
+    pub fn show(&mut self, ui: &mut Ui, port_id: usize, style: &PortStyle) {
         ui.label(&self.name);
-        self.data.show(ui, style);
+        self.data.show(ui, port_id, style);
     }
 }
 
@@ -97,12 +97,12 @@ impl InputId {
     }
 }
 pub trait OutputPortData: 'static + Downcast + Send + Sync {
-    fn show(&mut self, ui: &mut Ui, style: &PortStyle);
+    fn show(&mut self, ui: &mut Ui, port_id: usize, style: &PortStyle);
 }
 impl_downcast!(OutputPortData);
 
 impl OutputPortData for () {
-    fn show(&mut self, _ui: &mut Ui, _style: &PortStyle) {}
+    fn show(&mut self, _ui: &mut Ui, _port_id: usize, _style: &PortStyle) {}
 }
 
 type BoxedOutputPortData = SmallBox<dyn OutputPortData, space::S2>;
@@ -151,9 +151,9 @@ impl Output {
         data.downcast_mut::<T>().unwrap()
     }
 
-    pub fn show(&mut self, ui: &mut Ui, style: &PortStyle) {
+    pub fn show(&mut self, ui: &mut Ui, port_id: usize, style: &PortStyle) {
         ui.label(&self.name);
-        self.data.show(ui, style);
+        self.data.show(ui, port_id, style);
     }
 }
 

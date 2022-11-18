@@ -1,6 +1,5 @@
 use crate::node_graph::{
-    ConnectionEditState, ConnectionResult, ContextMenu, ContextMenuState, Graph, NodeCommand, PortViewState,
-    ZoomPanState,
+    ConnectionEditState, ConnectionResult, ContextMenu, ContextMenuState, Graph, PortViewState, ZoomPanState,
 };
 use egui::{Id, Key, Sense, Ui};
 
@@ -51,14 +50,13 @@ impl<'a> GraphEdit<'a> {
         zoom_pan: &ZoomPanState,
         editor_state: &mut GraphEditState,
         port_visual: &mut PortViewState,
-        command_queue: &mut Vec<NodeCommand>,
     ) {
         // render nodes
         let mut dragged_node = None;
 
         let style = self.graph.get_port_styles().clone();
         for node in self.graph.nodes_mut() {
-            let node_state = node.show(ui, zoom_pan, port_visual, &style, command_queue);
+            let node_state = node.show(ui, zoom_pan, port_visual, &style);
             if node_state.dragged {
                 dragged_node = Some(node_state);
             }
@@ -83,7 +81,7 @@ impl<'a> GraphEdit<'a> {
         }
     }
 
-    pub fn show(&mut self, ui: &mut Ui, command_queue: &mut Vec<NodeCommand>) {
+    pub fn show(&mut self, ui: &mut Ui) {
         let mut editor_state = GraphEditState::load(ui, self.id).unwrap_or_default();
         let mut zoom_pan = ZoomPanState::load(ui, self.id).unwrap_or_else(|| ZoomPanState::new(self.id, ui));
         let mut port_visual = PortViewState::load(ui, self.id).unwrap_or_default();
@@ -103,7 +101,7 @@ impl<'a> GraphEdit<'a> {
         let mut response = ui.interact(zoom_pan.screen_rect, self.id.with("graph"), Sense::drag());
 
         zoom_pan.show_zoomed(ui, |ui| {
-            self.show_graph(ui, &zoom_pan, &mut editor_state, &mut port_visual, command_queue);
+            self.show_graph(ui, &zoom_pan, &mut editor_state, &mut port_visual);
         });
 
         // connection edit

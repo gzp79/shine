@@ -1,14 +1,10 @@
 use egui::{CentralPanel, Color32, ComboBox, Id, Pos2, SidePanel, Slider, Ui};
 use egui_extras::{Size, StripBuilder};
-use shine_ui::{
-    node_graph::{
-        Command, Connection, ConnectionData, ContextMenu, ContextMenuData, Graph, GraphEdit, Input, InputId,
-        InputPortData, Node, NodeCommand, NodeData, NodeId, Output, OutputId, OutputPortData, PortStyle, PortStyles,
-        Validator,
-    },
-    utils::ChangeTracked,
+use shine_ui::node_graph::{
+    Connection, ConnectionData, ContextMenu, ContextMenuData, Graph, GraphEdit, Input, InputId, InputPortData, Node,
+    NodeData, Output, OutputId, OutputPortData, PortStyle, PortStyles, Validator,
 };
-use std::{any::TypeId, ops::DerefMut};
+use std::any::TypeId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SideTool {
@@ -97,17 +93,8 @@ pub struct SampleNodeData {
 }
 
 impl NodeData for SampleNodeData {
-    fn show(
-        &mut self,
-        ui: &mut Ui,
-        node_id: NodeId,
-        _inputs: &mut Vec<Input>,
-        _outputs: &mut Vec<Output>,
-        commands: &mut Vec<NodeCommand>,
-    ) {
-        let mut value = ChangeTracked::new(&self.value);
-        ui.text_edit_singleline(value.deref_mut());
-        value.map_change(|v| commands.push(NodeCommand::custom(node_id, v)));
+    fn show(&mut self, ui: &mut Ui, _inputs: &mut Vec<Input>, _outputs: &mut Vec<Output>) {
+        ui.text_edit_singleline(&mut self.value);
     }
 }
 
@@ -188,7 +175,6 @@ impl Default for MyApp {
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let mut command_queue = Vec::new();
         SidePanel::left("Settings").show(ctx, |ui| {
             ComboBox::new("Side panel", "")
                 .selected_text(format!("{:?}", &mut self.tool))
@@ -212,8 +198,7 @@ impl eframe::App for MyApp {
                     strip.cell(|ui| {
                         ui.painter()
                             .rect_filled(ui.available_rect_before_wrap(), 0.0, Color32::DARK_BLUE);
-                        GraphEdit::new(Id::new("graph edit 1"), &mut self.graph, &self.context_menu)
-                            .show(ui, &mut command_queue);
+                        GraphEdit::new(Id::new("graph edit 1"), &mut self.graph, &self.context_menu).show(ui);
                     });
                     strip.cell(|ui| {
                         ui.painter()
@@ -222,18 +207,10 @@ impl eframe::App for MyApp {
                     strip.cell(|ui| {
                         ui.painter()
                             .rect_filled(ui.available_rect_before_wrap(), 0.0, Color32::DARK_RED);
-                        GraphEdit::new(Id::new("graph edit 2"), &mut self.graph, &self.context_menu)
-                            .show(ui, &mut command_queue);
+                        GraphEdit::new(Id::new("graph edit 2"), &mut self.graph, &self.context_menu).show(ui);
                     });
                 });
         });
-
-        for NodeCommand { node_id, command } in command_queue {
-            match command {
-                Command::Moved(pos) => log::trace!("Node ({:?}) moved to {:?}", node_id, pos),
-                Command::Custom(_) => log::trace!("Node ({:?}) got custom command", node_id),
-            };
-        }
     }
 }
 

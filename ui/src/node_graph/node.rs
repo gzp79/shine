@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use crate::{
     node_graph::{
         Input, InputId, InputOutputId, Output, OutputId, PortSelection, PortStyle, PortStyles, PortViewState,
@@ -17,46 +15,10 @@ use shine_core::{
 
 new_key_type! { pub struct NodeId; }
 
-pub enum Command {
-    Moved(Pos2),
-    Custom(Box<dyn Any + Send + Sync>),
-}
-
-pub struct NodeCommand {
-    pub node_id: NodeId,
-    pub command: Command,
-}
-
-impl NodeCommand {
-    pub fn new(node_id: NodeId, command: Command) -> Self {
-        Self { node_id, command }
-    }
-
-    pub fn moved(node_id: NodeId, location: Pos2) -> Self {
-        Self {
-            node_id,
-            command: Command::Moved(location),
-        }
-    }
-
-    pub fn custom<T: 'static + Send + Sync>(node_id: NodeId, command: T) -> Self {
-        Self {
-            node_id,
-            command: Command::Custom(Box::new(command)),
-        }
-    }
-}
-
 pub trait NodeData: 'static + Downcast + Send + Sync {
-    fn show(
-        &mut self,
-        _ui: &mut Ui,
-        _node_id: NodeId,
-        _inputs: &mut Vec<Input>,
-        _outputs: &mut Vec<Output>,
-        _command_queue: &mut Vec<NodeCommand>,
-    ) {
-    }
+    fn set_location(&mut self, _new_location: Pos2) {}
+
+    fn show(&mut self, _ui: &mut Ui, _inputs: &mut Vec<Input>, _outputs: &mut Vec<Output>) {}
 }
 impl_downcast!(NodeData);
 
@@ -102,6 +64,10 @@ impl Node {
 
     pub fn data(&self) -> &dyn NodeData {
         &*self.data
+    }
+
+    pub fn data_mut(&mut self) -> &mut dyn NodeData {
+        &mut *self.data
     }
 
     pub fn data_as<T: NodeData>(&self) -> &T {
@@ -158,7 +124,6 @@ impl Node {
         zoom_pan: &ZoomPanState,
         port_visual: &mut PortViewState,
         port_styles: &PortStyles,
-        command_queue: &mut Vec<NodeCommand>,
     ) -> NodeState {
         let node_id = self.id;
         let id = zoom_pan.child_id(node_id);
@@ -182,8 +147,7 @@ impl Node {
                 FrameWithHeader::new(&self.caption)
                     .frame(Frame::window(ui.style()).shadow(Shadow::default()).inner_margin(margin))
                     .show(ui, |ui| {
-                        self.data
-                            .show(ui, node_id, &mut self.inputs, &mut self.outputs, command_queue);
+                        self.data.show(ui, &mut self.inputs, &mut self.outputs);
 
                         let mut port_infos = Vec::<(InputOutputId, f32)>::new();
                         let port_top = ui.min_rect().bottom();
@@ -279,7 +243,7 @@ impl Node {
         if node_state.dragged && response.drag_delta() != Vec2::ZERO {
             let new_location = self.location + zoom_pan.vec2_screen_to_area(response.drag_delta());
             self.location = new_location;
-            command_queue.push(NodeCommand::moved(node_id, new_location));
+            self.data_mut().set_location(new_location);
         }
 
         node_state.clone().store(ui, id);

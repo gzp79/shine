@@ -13,13 +13,13 @@ name = "graph_editor"
 
 [dependencies]
 log = "0.4"
-env_logger = "0.9"
+env_logger = "0.10"
 thiserror = "1.0"
 
-egui = "0.19"
-emath = "0.19"
-egui_extras = "0.19"
-eframe = "0.19"
+egui = "0.20"
+emath = "0.20"
+egui_extras = "0.20"
+eframe = "0.20"
 
 shine-core = { path = "../core", version = "0.1.0" }
 

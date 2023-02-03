@@ -12,13 +12,52 @@ pub use self::delay::*;
 
 pub mod borrow;
 pub mod collections;
-pub mod graph;
 
 pub use atomic_refcell;
 pub use crossbeam;
 pub use downcast_rs;
-pub use slotmap;
 pub use smallbox;
+
+pub mod slotmap {
+    pub use slotmap::*;
+
+    pub trait GetOrInsert<K: Key, V> {
+        fn get_or_insert_with<F>(&mut self, key: K, with: F) -> &mut V
+        where
+            F: FnOnce() -> V;
+
+        fn get_or_insert_default(&mut self, key: K) -> &mut V
+        where
+            V: Default,
+        {
+            self.get_or_insert_with(key, Default::default)
+        }
+    }
+
+    impl<K: Key, V> GetOrInsert<K, V> for SecondaryMap<K, V> {
+        fn get_or_insert_with<F>(&mut self, key: K, with: F) -> &mut V
+        where
+            F: FnOnce() -> V,
+        {
+            if !self.contains_key(key) {
+                self.insert(key, with());
+            }
+            return self.get_mut(key).unwrap();
+        }
+    }
+
+    impl<K: Key, V> GetOrInsert<K, V> for SparseSecondaryMap<K, V> {
+        fn get_or_insert_with<F>(&mut self, key: K, with: F) -> &mut V
+        where
+            F: FnOnce() -> V,
+        {
+            if !self.contains_key(key) {
+                self.insert(key, with());
+            }
+            return self.get_mut(key).unwrap();
+        }
+    }
+}
 
 /// Helper to extend lifetime of a refernece. Genrates highly unsafe code.
 #[macro_export]

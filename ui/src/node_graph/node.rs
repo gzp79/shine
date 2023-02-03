@@ -114,7 +114,7 @@ impl Node {
             PortSelection::Hover => style.hover_color,
         };
 
-        painter.circle(port_pos, r, color, Stroke::none());
+        painter.circle(port_pos, r, color, Stroke::NONE);
         *node_rect = node_rect.union(Rect::from_center_size(port_pos, vec2(r * 2., r * 2.)));
     }
 

@@ -30,7 +30,7 @@ pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let test_attrs = match args.as_slice() {
         [] => input.attrs.clone(),
         //todo: serial, or serial = "key" -> input.attrs.clone().append("#[::serial_test::serial(key)]")
-        _ => panic!("unsupported attributes supplied: {:?}", args),
+        _ => panic!("unsupported attributes supplied: {args:?}"),
     };
 
     expand_wrapper(&test_decors, &test_attrs, &input)

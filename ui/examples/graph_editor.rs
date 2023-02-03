@@ -221,5 +221,5 @@ fn main() {
         initial_window_size: Some(egui::vec2(1000.0, 700.0)),
         ..Default::default()
     };
-    eframe::run_native("graph editor", options, Box::new(|_cc| Box::new(MyApp::default())));
+    eframe::run_native("graph editor", options, Box::new(|_cc| Box::<MyApp>::default()));
 }

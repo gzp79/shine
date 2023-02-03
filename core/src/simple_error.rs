@@ -23,14 +23,14 @@ where
         let try_fun = move || -> Result<String, fmt::Error> {
             let mut output = String::new();
             let o = &mut output;
-            writeln!(o, "[ERROR] {}", self)?;
+            writeln!(o, "[ERROR] {self}")?;
             if let Some(cause) = self.source() {
                 writeln!(o)?;
                 writeln!(o, "Caused by:")?;
                 let mut cause = Some(cause);
                 let mut i = 0;
                 while let Some(e) = cause {
-                    writeln!(o, "   {}: {}", i, e)?;
+                    writeln!(o, "   {i}: {e}")?;
                     cause = e.source();
                     i += 1;
                 }

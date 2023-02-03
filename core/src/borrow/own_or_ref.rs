@@ -12,6 +12,15 @@ impl<'a, T> OwnOrRef<'a, T> {
             OwnOrRef::Owned(t) => t,
         }
     }
+
+    pub fn into_owned(self) -> T
+    where T: Clone
+    {
+        match self {
+            OwnOrRef::Borrowed(t) => t.clone(),
+            OwnOrRef::Owned(t) => t,
+        }
+    }
 }
 
 impl<'a, T> Deref for OwnOrRef<'a, T> {

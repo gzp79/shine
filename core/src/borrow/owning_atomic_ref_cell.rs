@@ -12,7 +12,7 @@ pub enum OwningAtomicRefError {
     BorrowError,
 }
 
-/// A write lock guard that owns the 'Arc'-ed lock.
+/// An exclusive lock guard that owns the 'Arc'-ed lock.
 pub struct OwningAtomicRefMutGuard<'a, T> {
     owner: Arc<AtomicRefCell<T>>,
     guard: AtomicRefMut<'a, T>,
@@ -63,7 +63,7 @@ impl<'a, T> DerefMut for OwningAtomicRefMutGuard<'a, T> {
     }
 }
 
-/// A write lock guard that owns the 'Arc'-ed lock.
+/// A shared lock guard that owns the 'Arc'-ed lock.
 pub struct OwningAtomicRefGuard<'a, T> {
     owner: Arc<AtomicRefCell<T>>,
     guard: AtomicRef<'a, T>,

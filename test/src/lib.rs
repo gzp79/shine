@@ -12,7 +12,7 @@ pub use tokio::test as impl_test_async;
 
 /// Test setup executed before each test.
 pub fn setup_test() {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(any(target_arch = "wasm32", miri)))]
     {
         let _ = env_logger::builder().is_test(true).try_init();
         color_backtrace::install();

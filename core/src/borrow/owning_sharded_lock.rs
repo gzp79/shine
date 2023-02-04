@@ -15,7 +15,14 @@ pub enum OwningShardedLockError {
 /// A write lock guard that owns the 'Arc'-ed lock.
 pub struct OwningShardedWriteGuard<'a, T> {
     owner: Arc<ShardedLock<T>>,
-    guard: ShardedLockWriteGuard<'a, T>,
+    guard: Option<ShardedLockWriteGuard<'a, T>>,
+}
+
+impl<'a, T> Drop for OwningShardedWriteGuard<'a, T> {
+    fn drop(&mut self) {
+        // make sure the guard is dropped before the owner to avoid any use after free
+        self.guard = None;
+    }
 }
 
 impl<'a, T> OwningShardedWriteGuard<'a, T> {
@@ -28,12 +35,23 @@ impl<'a, T> OwningShardedWriteGuard<'a, T> {
         // The ownership of the lock is kept in the struct, thus lifetime of the guard can be safely extended.
         // This is an unsafe workaround to solve the self-referential issue that cannot be expressed in safe-rust.
         let guard = unsafe { mem::transmute(guard) };
-        Ok(Self { owner, guard })
+        Ok(OwningShardedWriteGuard::from_raw(owner, guard))
     }
 
     pub fn new(owner: Arc<ShardedLock<T>>) -> Self {
         Self::try_new(owner).unwrap()
     }
+
+    fn from_raw(owner: Arc<ShardedLock<T>>, guard: ShardedLockWriteGuard<'a, T>) -> OwningShardedWriteGuard<'a, T> {
+        Self {
+            owner,
+            guard: Some(guard),
+        }
+    }
+
+    /*fn into_raw(mut self) -> (Arc<ShardedLock<T>>, ShardedLockWriteGuard<'a, T>) {
+        (self.owner.clone(), self.guard.take().unwrap())
+    }*/
 
     pub fn owner(&self) -> &Arc<ShardedLock<T>> {
         &self.owner
@@ -42,11 +60,11 @@ impl<'a, T> OwningShardedWriteGuard<'a, T> {
     pub fn get(&self) -> &T {
         // As object can be access mutable trough `get_mut`, the returned reference cannot outlive &self
         // compared to the same function in OwningShardedReadGuard.
-        &self.guard
+        self.guard.as_deref().unwrap()
     }
 
     pub fn get_mut(&mut self) -> &mut T {
-        &mut self.guard
+        self.guard.as_deref_mut().unwrap()
     }
 }
 
@@ -67,7 +85,14 @@ impl<'a, T> DerefMut for OwningShardedWriteGuard<'a, T> {
 /// A write lock guard that owns the 'Arc'-ed lock.
 pub struct OwningShardedReadGuard<'a, T> {
     owner: Arc<ShardedLock<T>>,
-    guard: ShardedLockReadGuard<'a, T>,
+    guard: Option<ShardedLockReadGuard<'a, T>>,
+}
+
+impl<'a, T> Drop for OwningShardedReadGuard<'a, T> {
+    fn drop(&mut self) {
+        // make sure the guard is dropped before the owner to avoid any use after free
+        self.guard = None;
+    }
 }
 
 impl<'a, T> OwningShardedReadGuard<'a, T> {
@@ -80,22 +105,34 @@ impl<'a, T> OwningShardedReadGuard<'a, T> {
         // The ownership of the lock is kept in the struct, thus lifetime of the guard can be safely extended.
         // This is an unsafe workaround to solve the self-referential issue that cannot be expressed in safe-rust.
         let guard = unsafe { mem::transmute(guard) };
-        Ok(Self { owner, guard })
+        Ok(OwningShardedReadGuard::from_raw(owner, guard))
     }
 
     pub fn new(owner: Arc<ShardedLock<T>>) -> Self {
         Self::try_new(owner).unwrap()
     }
 
+    fn from_raw(owner: Arc<ShardedLock<T>>, guard: ShardedLockReadGuard<'a, T>) -> OwningShardedReadGuard<'a, T> {
+        Self {
+            owner,
+            guard: Some(guard),
+        }
+    }
+
+    /*fn into_raw(mut self) -> (Arc<ShardedLock<T>>, ShardedLockReadGuard<'a, T>) {
+        (self.owner.clone(), self.guard.take().unwrap())
+    }*/
+
     pub fn owner(&self) -> &Arc<ShardedLock<T>> {
         &self.owner
     }
 
     pub fn get(&self) -> &'a T {
-        // SAFETY
+        // Safety
         // It is safe to increase the lifetime from 'self to 'a as the lock is held for the entire 'a
         // and only shared access can be create for the entire 'a.
-        unsafe { &*(&*self.guard as *const _) }
+        let value = self.guard.as_deref().unwrap();
+        unsafe { mem::transmute(value) }
     }
 }
 

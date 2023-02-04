@@ -103,6 +103,27 @@
             "group": "build"
         },
         {
+            "label": "test miri",
+            "type": "shell",
+            "command": "cargo miri test -p shine-${input:projects} ${input:features}",
+            "options": {
+                "env": {
+                    "_RUST_LOG": "debug",
+                    "RUST_BACKTRACE": "full"
+                },
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build"
+        },
+        {
             "label": "run graph editor (native)",
             "type": "shell",
             "command": "cargo run -p shine-ui --example graph_editor",

@@ -1,6 +1,7 @@
 {
     "terminal.integrated.env.windows": {
         "_RUST_BACKTRACE": "full",
+        "MIRIFLAGS": "-Zmiri-backtrace=full",
         "RUST_LOG": "trace",
 
         "_NO_HEADLESS": "1"

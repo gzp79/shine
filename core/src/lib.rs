@@ -32,7 +32,7 @@ pub mod smallbox {
     /// heap storage.
     #[cfg(miri)]
     pub struct Space<const N: usize> {
-        _phantomData: PhantomData<[usize; N]>
+        _phantomData: std::marker::PhantomData<[usize; N]>
     }
 
 }

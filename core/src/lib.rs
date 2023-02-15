@@ -21,21 +21,12 @@ pub use slotmap;
 pub mod smallbox {
     pub use ::smallbox::*;
 
-    /// Space constraint for SmallBux using const generics.
-    #[cfg(not(miri))]
+    /// Space constraint for SmallBox using const generics.
     pub struct Space<const N: usize> {
         _dummy: [usize; N]
     }
-
-    /// Space constraint for SmallBox under miri. 
-    /// SmallBox has some issue with miri: https://github.com/andylokandy/smallbox/issues/21#issuecomment-1418204906, thus we fall back to the
-    /// heap storage.
-    #[cfg(miri)]
-    pub struct Space<const N: usize> {
-        _phantomData: PhantomData<[usize; N]>
-    }
-
 }
+
 /// Helper to construct a HashMap from a list of `key => value` pairs.
 #[macro_export]
 macro_rules! hash_map {
